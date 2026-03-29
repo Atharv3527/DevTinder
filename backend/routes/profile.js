@@ -5,7 +5,7 @@ import { supabase } from "../config/supabase.js";
 export const profileRouter = express.Router();
 
 // GET /api/profile — own profile
-profileRouter.get("/profile", userAuth, async (req, res) => {
+profileRouter.get("/", userAuth, async (req, res) => {
   try {
     const { uid } = req.user;
 
@@ -24,7 +24,7 @@ profileRouter.get("/profile", userAuth, async (req, res) => {
 });
 
 // POST /api/profile — save profile
-profileRouter.post("/profile", userAuth, async (req, res) => {
+profileRouter.post("/", userAuth, async (req, res) => {
   try {
     const { uid } = req.user;
     const {
@@ -70,7 +70,7 @@ profileRouter.post("/profile", userAuth, async (req, res) => {
 });
 
 // GET /api/profile/:uid — public profile
-profileRouter.get("/profile/:uid", userAuth, async (req, res) => {
+profileRouter.get("/:uid", userAuth, async (req, res) => {
   try {
     const { uid } = req.params;
 

@@ -5,7 +5,7 @@ import { supabase } from "../config/supabase.js";
 export const chatRouter = express.Router();
 
 // GET /api/chat/:partnerId — get message history between current user and partner
-chatRouter.get("/chat/:partnerId", userAuth, async (req, res) => {
+chatRouter.get("/:partnerId", userAuth, async (req, res) => {
   try {
     const uid = req.user.uid;
     const { partnerId } = req.params;
@@ -42,7 +42,7 @@ chatRouter.get("/chat/:partnerId", userAuth, async (req, res) => {
 });
 
 // POST /api/chat/:partnerId — send a message
-chatRouter.post("/chat/:partnerId", userAuth, async (req, res) => {
+chatRouter.post("/:partnerId", userAuth, async (req, res) => {
   try {
     const uid = req.user.uid;
     const { partnerId } = req.params;

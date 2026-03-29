@@ -2,9 +2,9 @@ import express from "express";
 import { userAuth } from "../middlewares/auth.js";
 import { supabase } from "../config/supabase.js";
 
-const feedRouter = express.Router();
+export const feedRouter = express.Router();
 
-feedRouter.get("/feed", userAuth, async (req, res) => {
+feedRouter.get("/", userAuth, async (req, res) => {
   try {
     const uid = req.user.uid;
     const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -44,4 +44,3 @@ feedRouter.get("/feed", userAuth, async (req, res) => {
   }
 });
 
-export { feedRouter };

@@ -5,7 +5,7 @@ import { supabase } from "../config/supabase.js";
 export const authRouter = express.Router();
 
 // POST /api/auth/sync — upsert developer record after Firebase login
-authRouter.post("/auth/sync", userAuth, async (req, res) => {
+authRouter.post("/sync", userAuth, async (req, res) => {
   try {
     const { uid, email } = req.user;
     const { full_name, profile_image_url } = req.body;
@@ -37,7 +37,7 @@ authRouter.post("/auth/sync", userAuth, async (req, res) => {
 });
 
 // GET /api/auth/me
-authRouter.get("/auth/me", userAuth, async (req, res) => {
+authRouter.get("/me", userAuth, async (req, res) => {
   try {
     const { uid } = req.user;
 

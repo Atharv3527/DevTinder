@@ -2,10 +2,11 @@ import express from "express";
 import { userAuth } from "../middlewares/auth.js";
 import { supabase } from "../config/supabase.js";
 
-const requestRouter = express.Router();
+export const requestRouter = express.Router();
+export const connectionsRouter = express.Router();
 
 // POST /api/request/send/:toUserId — send connection request
-requestRouter.post("/request/send/:toUserId", userAuth, async (req, res) => {
+requestRouter.post("/send/:toUserId", userAuth, async (req, res) => {
   try {
     const senderId = req.user.uid;
     const receiverId = req.params.toUserId;
@@ -42,7 +43,7 @@ requestRouter.post("/request/send/:toUserId", userAuth, async (req, res) => {
 });
 
 // POST /api/request/accept/:connectionId — accept a connection
-requestRouter.post("/request/accept/:connectionId", userAuth, async (req, res) => {
+requestRouter.post("/accept/:connectionId", userAuth, async (req, res) => {
   try {
     const uid = req.user.uid;
     const { connectionId } = req.params;
@@ -65,7 +66,7 @@ requestRouter.post("/request/accept/:connectionId", userAuth, async (req, res) =
 });
 
 // POST /api/request/reject/:connectionId — reject an incoming pending request
-requestRouter.post("/request/reject/:connectionId", userAuth, async (req, res) => {
+requestRouter.post("/reject/:connectionId", userAuth, async (req, res) => {
   try {
     const uid = req.user.uid;
     const { connectionId } = req.params;
@@ -88,7 +89,7 @@ requestRouter.post("/request/reject/:connectionId", userAuth, async (req, res) =
 });
 
 // GET /api/connections — get all accepted connections for current user
-requestRouter.get("/connections", userAuth, async (req, res) => {
+connectionsRouter.get("/", userAuth, async (req, res) => {
   try {
     const uid = req.user.uid;
 
@@ -118,7 +119,7 @@ requestRouter.get("/connections", userAuth, async (req, res) => {
 });
 
 // GET /api/connections/pending — incoming pending requests
-requestRouter.get("/connections/pending", userAuth, async (req, res) => {
+connectionsRouter.get("/pending", userAuth, async (req, res) => {
   try {
     const uid = req.user.uid;
 
@@ -137,4 +138,3 @@ requestRouter.get("/connections/pending", userAuth, async (req, res) => {
   }
 });
 
-export { requestRouter };

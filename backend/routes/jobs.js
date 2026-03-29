@@ -3,4 +3,4 @@ import { getJobs } from "../controllers/jobs.js";
 
 export const jobsRouter = express.Router();
 
-jobsRouter.get("/jobs", getJobs);
+jobsRouter.get("/", getJobs);
