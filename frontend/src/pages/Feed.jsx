@@ -5,7 +5,7 @@ import { Check, X, Code2, Loader2, Sparkles, MapPin, Github, ChevronRight } from
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 'https://devtinder-1-euv2.onrender.com';
 const SPRING = { type: 'spring', stiffness: 400, damping: 30 };
 
 function CardSkeleton() {

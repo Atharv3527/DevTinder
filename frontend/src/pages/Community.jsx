@@ -5,7 +5,7 @@ import { ThumbsUp, MessageCircle, Share2, Users, Loader2, Code2 } from 'lucide-r
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 'https://devtinder-1-euv2.onrender.com';
 
 // One curated sample post shown as community starter
 const SAMPLE_POST = {

@@ -10,7 +10,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { createClient } from '@supabase/supabase-js';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 'https://devtinder-1-euv2.onrender.com';
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,

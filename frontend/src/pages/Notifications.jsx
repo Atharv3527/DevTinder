@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 'https://devtinder-1-euv2.onrender.com';
 
 function timeAgo(iso) {
   const d = iso ? new Date(iso) : new Date();

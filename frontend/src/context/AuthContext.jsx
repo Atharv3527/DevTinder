@@ -4,7 +4,7 @@ import { auth } from '../config/firebase';
 import axios from 'axios';
 
 const AuthContext = createContext();
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 'https://devtinder-1-euv2.onrender.com';
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);          // Firebase user

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { JobCardSkeleton } from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
 
+const API = import.meta.env.VITE_API_URL || 'https://devtinder-1-euv2.onrender.com';
 const DOMAINS = ['All Domains', 'Frontend Developer', 'Backend Developer', 'MERN Stack Developer', 'DevOps Engineer', 'UI/UX Designer', 'Java Fullstack Developer', 'Database Developer', '.NET Developer'];
 const LOCATIONS = ['All India', 'Pune', 'Mumbai', 'Bangalore', 'Gurgaon'];
 
@@ -36,8 +37,7 @@ export default function Jobs() {
       if (domain !== 'All Domains') query.append('role', domain);
       if (location !== 'All India') query.append('location', location);
       
-      // In production development using localhost backend proxy or absolute URL
-      const response = await fetch(`http://localhost:5000/api/jobs?${query.toString()}`);
+      const response = await fetch(`${API}/api/jobs?${query.toString()}`);
       if (!response.ok) throw new Error("Failed to fetch jobs");
       const result = await response.json();
       
