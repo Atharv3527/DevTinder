@@ -14,7 +14,9 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, logout, user, dbUser } = useAuth();
+  const displayName = dbUser?.full_name || user?.displayName || 'Account';
+  const avatarUrl = user?.photoURL;
 
   const navItems = [...baseNavItems];
   if (isAuthenticated) {
@@ -68,15 +70,24 @@ export default function Navbar() {
               );
             })}
             
-            <div className="pl-4 ml-2 border-l border-border flex items-center">
+            <div className="pl-4 ml-2 border-l border-border flex items-center gap-2">
               {isAuthenticated ? (
-                <button 
-                  onClick={handleLogout}
-                  className="flex items-center gap-2 px-4 py-2 rounded-full font-medium text-text-secondary hover:bg-red-500/10 hover:text-red-500 transition-all duration-200"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Logout
-                </button>
+                <div className="flex items-center gap-2">
+                  <Link to="/profile" className="flex items-center gap-2 px-2 py-1.5 rounded-full hover:bg-surface transition-colors">
+                    {avatarUrl
+                      ? <img src={avatarUrl} alt={displayName} className="w-7 h-7 rounded-full object-cover border border-border" />
+                      : <div className="w-7 h-7 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-xs font-bold text-primary">{displayName[0]}</div>
+                    }
+                    <span className="text-sm font-medium text-text-primary max-w-24 truncate">{displayName.split(' ')[0]}</span>
+                  </Link>
+                  <button 
+                    onClick={handleLogout}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full font-medium text-text-secondary hover:bg-red-500/10 hover:text-red-400 transition-all text-sm"
+                    title="Logout"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                </div>
               ) : (
                 <Link 
                   to="/login"
@@ -87,6 +98,7 @@ export default function Navbar() {
                 </Link>
               )}
             </div>
+
           </div>
 
           {/* Mobile Menu Button */}

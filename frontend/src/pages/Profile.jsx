@@ -1,171 +1,318 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate, Link } from 'react-router-dom';
+import {
+  Github, MapPin, Briefcase, GraduationCap, Code2,
+  Edit3, ExternalLink, Loader2, Star, Share2
+} from 'lucide-react';
+import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
+
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+const sectionVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 280, damping: 24 } },
+};
 
 const pageVariants = {
   hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.15, delayChildren: 0.1 },
-  },
-};
-
-const sectionVariants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 25 } },
-};
-
-const badgeVariants = {
-  hidden: { scale: 0.8, opacity: 0 },
-  visible: { scale: 1, opacity: 1, transition: { type: 'spring', stiffness: 300, damping: 20 } },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.05 } },
 };
 
 export default function Profile() {
+  const { user, dbUser, getToken } = useAuth();
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState(null);
+  const [skills, setSkills] = useState([]);
+  const [experience, setExperience] = useState([]);
+  const [education, setEducation] = useState([]);
+  const [repos, setRepos] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const token = await getToken();
+        const res = await axios.get(`${API}/api/profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setProfile(res.data.profile);
+        setSkills(res.data.skills || []);
+        setExperience(res.data.experience || []);
+        setEducation(res.data.education || []);
+
+        // Fetch GitHub repos if github_url is set
+        if (res.data.profile?.github_url) {
+          const username = res.data.profile.github_url.split('/').pop();
+          try {
+            const repoRes = await axios.get(
+              `https://api.github.com/users/${username}/repos?sort=stars&per_page=6`
+            );
+            setRepos(repoRes.data);
+          } catch {
+            // silently fail GitHub fetch
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch profile:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-10 h-10 text-primary animate-spin" />
+      </div>
+    );
+  }
+
+  // No profile yet — prompt user to set up
+  if (!profile) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center gap-5">
+        <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center border border-primary/20">
+          <Edit3 className="w-9 h-9 text-primary" />
+        </div>
+        <div>
+          <h2 className="text-2xl font-bold text-text-primary">Profile Not Set Up</h2>
+          <p className="text-text-secondary mt-2 text-sm">Complete your profile to appear in the developer feed.</p>
+        </div>
+        <Link to="/profile-setup">
+          <motion.span
+            whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-primary to-accent text-white px-6 py-3 rounded-2xl font-bold text-sm shadow-lg shadow-primary/25 cursor-pointer"
+          >
+            Set Up Profile
+          </motion.span>
+        </Link>
+      </div>
+    );
+  }
+
+  const displayName = dbUser?.full_name || user?.displayName || 'Developer';
+  const avatarUrl = profile.profile_photo || user?.photoURL;
+  const initials = displayName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+
   return (
     <motion.div
       variants={pageVariants}
       initial="hidden"
       animate="visible"
-      className="max-w-3xl mx-auto space-y-6 pb-12"
+      className="max-w-3xl mx-auto pb-16 space-y-5"
     >
       {/* Header Card */}
-      <motion.div variants={sectionVariants} className="bg-surface border border-border rounded-xl overflow-hidden shadow-sm relative">
-        <div className="h-48 bg-gradient-to-r from-accent to-primary opacity-80 backdrop-blur-3xl relative overflow-hidden">
-          <motion.div 
-            initial={{ x: '-100%' }}
-            animate={{ x: '100%' }}
-            transition={{ repeat: Infinity, duration: 3, ease: 'linear' }}
-            className="absolute inset-0 w-1/3 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12"
-          />
-        </div>
-        <motion.button 
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          title="Share Profile"
-          className="absolute top-4 right-4 bg-background/50 backdrop-blur-md p-2 rounded-full text-white hover:bg-background/80 transition-colors border border-white/10"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-5.368m0 5.368l5.662 3.397m-5.662-3.397a3 3 0 005.662 3.397m-5.662-3.397l5.662-3.397m0 0a3 3 0 105.662 3.397m-5.662-3.397a3 3 0 015.662 3.397" />
-          </svg>
-        </motion.button>
-        <div className="px-6 pb-6 relative">
-          <motion.div 
-            initial={{ scale: 0, rotate: -180 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{ type: 'spring', stiffness: 260, damping: 20, delay: 0.2 }}
-            className="w-32 h-32 bg-zinc-800 rounded-full border-4 border-surface -mt-16 relative flex items-center justify-center text-5xl shadow-lg border-primary/20"
+      <motion.div variants={sectionVariants} className="bg-surface border border-border rounded-2xl overflow-hidden shadow-sm">
+        {/* Banner */}
+        <div className="h-44 relative overflow-hidden">
+          {profile.background_image ? (
+            <img src={profile.background_image} alt="banner" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-r from-accent to-primary opacity-70" />
+          )}
+          {/* Share button */}
+          <motion.button
+            whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+            className="absolute top-4 right-4 bg-background/50 backdrop-blur-md p-2 rounded-full text-white border border-white/10 hover:bg-background/80 transition-colors"
+            onClick={() => { navigator.clipboard.writeText(window.location.href); }}
+            title="Share Profile"
           >
-            👋
+            <Share2 className="w-4 h-4" />
+          </motion.button>
+        </div>
+
+        <div className="px-6 pb-6 relative">
+          {/* Avatar */}
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 20, delay: 0.15 }}
+            className="w-28 h-28 rounded-full -mt-14 border-4 border-surface shadow-lg overflow-hidden bg-zinc-800 flex items-center justify-center text-3xl font-bold text-primary"
+          >
+            {avatarUrl
+              ? <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" />
+              : initials
+            }
           </motion.div>
+
           <div className="mt-4 flex flex-col md:flex-row md:justify-between md:items-end gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-text-primary">Jane Developer</h1>
-              <p className="text-lg text-text-secondary mt-1">Full Stack React Engineer @ TechCorp</p>
-              <p className="text-sm text-text-secondary flex items-center gap-1 mt-2">
-                <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                San Francisco, CA
-              </p>
+              <h1 className="text-2xl font-bold text-text-primary">{displayName}</h1>
+              {profile.address && (
+                <p className="text-sm text-text-secondary flex items-center gap-1 mt-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-primary" />
+                  {profile.address}
+                </p>
+              )}
             </div>
-            <div className="flex gap-3 w-full md:w-auto mt-2 md:mt-0">
-              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex-1 md:flex-none bg-primary hover:bg-primary-hover text-white px-8 py-2.5 rounded-full font-medium transition-colors shadow-md shadow-primary/20 text-sm flex items-center justify-center gap-2">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                </svg>
-                Edit Profile
-              </motion.button>
-              <a href="https://github.com/jane-developer" target="_blank" rel="noopener noreferrer">
-                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} title="GitHub Profile" className="bg-background border border-border hover:bg-surface text-text-primary p-2.5 rounded-full font-medium transition-colors shadow-sm">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-                  </svg>
-                </motion.button>
-              </a>
+            <div className="flex gap-3">
+              <Link to="/profile-setup">
+                <motion.span
+                  whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                  className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/30 text-primary px-5 py-2 rounded-2xl font-semibold text-sm hover:bg-primary/20 transition-colors cursor-pointer"
+                >
+                  <Edit3 className="w-3.5 h-3.5" /> Edit Profile
+                </motion.span>
+              </Link>
+              {profile.github_url && (
+                <a href={profile.github_url} target="_blank" rel="noreferrer">
+                  <motion.span
+                    whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                    className="inline-flex items-center justify-center w-9 h-9 bg-background border border-border rounded-2xl hover:border-primary/40 transition-colors cursor-pointer"
+                  >
+                    <Github className="w-4 h-4 text-text-secondary" />
+                  </motion.span>
+                </a>
+              )}
             </div>
           </div>
-          <motion.div variants={sectionVariants} className="mt-8 flex gap-8 border-t border-border pt-6">
-            <motion.div whileHover={{ y: -2 }} className="cursor-default">
-              <span className="block font-bold text-xl text-text-primary">1.2k</span>
+
+          {/* Stats */}
+          <div className="mt-6 pt-5 border-t border-border flex gap-8">
+            <div className="cursor-default">
+              <span className="block font-bold text-lg text-text-primary">{profile.total_connections || 0}</span>
               <span className="text-xs text-text-secondary uppercase tracking-wider font-semibold">Connections</span>
-            </motion.div>
-            <motion.div whileHover={{ y: -2 }} className="cursor-default">
-              <span className="block font-bold text-xl text-text-primary">45</span>
+            </div>
+            <div className="cursor-default">
+              <span className="block font-bold text-lg text-text-primary">{repos.length}</span>
               <span className="text-xs text-text-secondary uppercase tracking-wider font-semibold">Repositories</span>
-            </motion.div>
-             <motion.div whileHover={{ y: -2 }} className="cursor-default">
-              <span className="block font-bold text-xl text-text-primary">87</span>
-              <span className="text-xs text-text-secondary uppercase tracking-wider font-semibold">Endorsements</span>
-            </motion.div>
-          </motion.div>
+            </div>
+            <div className="cursor-default">
+              <span className="block font-bold text-lg text-text-primary">{skills.length}</span>
+              <span className="text-xs text-text-secondary uppercase tracking-wider font-semibold">Skills</span>
+            </div>
+          </div>
         </div>
       </motion.div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 space-y-6">
-          {/* About Section */}
-          <motion.div variants={sectionVariants} className="bg-surface border border-border rounded-xl p-6 shadow-sm">
-            <h2 className="text-xl font-bold text-text-primary mb-4">About</h2>
-            <p className="text-text-secondary text-sm leading-relaxed whitespace-pre-line">
-              Passionate full-stack developer with 5+ years of experience building scalable web applications. 
-              I love working with React, Node.js, and Tailwind CSS. Always exploring new technologies and 
-              enjoying the process of continuous learning.
-              
-              Currently focused on building accessible and highly performant user interfaces, and scaling microservices architecture on the backend.
-            </p>
-          </motion.div>
-          
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {/* Left column */}
+        <div className="md:col-span-2 space-y-5">
+
+          {/* About */}
+          {profile.about && (
+            <motion.div variants={sectionVariants} className="bg-surface border border-border rounded-2xl p-6 shadow-sm">
+              <h2 className="text-lg font-bold text-text-primary mb-3">About</h2>
+              <p className="text-text-secondary text-sm leading-relaxed">{profile.about}</p>
+            </motion.div>
+          )}
+
           {/* Experience */}
-          <motion.div variants={sectionVariants} className="bg-surface border border-border rounded-xl p-6 shadow-sm">
-            <h2 className="text-xl font-bold text-text-primary mb-6">Experience</h2>
-            <div className="space-y-6">
-              <motion.div whileHover={{ x: 5 }} className="flex gap-4 cursor-default">
-                 <div className="w-12 h-12 bg-background border border-border rounded-lg flex items-center justify-center font-bold text-xl text-primary flex-shrink-0 shadow-inner">
-                  T
-                </div>
-                 <div>
-                    <h3 className="font-semibold text-text-primary">Senior Frontend Engineer</h3>
-                    <p className="text-sm text-text-primary">TechCorp</p>
-                    <p className="text-xs text-text-secondary mt-1">Jan 2022 - Present • 4 yrs 3 mos</p>
-                    <p className="text-sm text-text-secondary mt-2 leading-relaxed">Lead the frontend architecture migration to Next.js. Improved performance metrics by 40% and established a comprehensive design system used across 5 products.</p>
-                 </div>
-              </motion.div>
-            </div>
-          </motion.div>
+          {experience.length > 0 && (
+            <motion.div variants={sectionVariants} className="bg-surface border border-border rounded-2xl p-6 shadow-sm">
+              <h2 className="text-lg font-bold text-text-primary mb-5 flex items-center gap-2">
+                <Briefcase className="w-4 h-4 text-primary" /> Experience
+              </h2>
+              <div className="space-y-5">
+                {experience.map((exp, i) => (
+                  <motion.div key={i} whileHover={{ x: 4 }} className="flex gap-4 cursor-default">
+                    <div className="w-10 h-10 bg-background border border-border rounded-xl flex items-center justify-center font-bold text-primary flex-shrink-0 text-sm shadow-inner">
+                      {exp.company?.[0]?.toUpperCase() || 'C'}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-text-primary text-sm">{exp.role}</h3>
+                      <p className="text-xs text-text-secondary">{exp.company}</p>
+                      <p className="text-xs text-text-secondary/70 mt-0.5">{exp.duration}</p>
+                      {exp.description && (
+                        <p className="text-xs text-text-secondary mt-2 leading-relaxed">{exp.description}</p>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* GitHub Repos */}
+          {repos.length > 0 && (
+            <motion.div variants={sectionVariants} className="bg-surface border border-border rounded-2xl p-6 shadow-sm">
+              <h2 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2">
+                <Github className="w-4 h-4 text-primary" /> Repositories
+              </h2>
+              <div className="grid grid-cols-1 gap-2">
+                {repos.map((repo) => (
+                  <motion.a
+                    key={repo.id}
+                    href={repo.html_url} target="_blank" rel="noreferrer"
+                    whileHover={{ scale: 1.01, x: 3 }}
+                    className="flex items-center justify-between bg-background border border-border rounded-xl px-4 py-3 hover:border-primary/40 transition-all group"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Code2 className="w-3.5 h-3.5 text-text-secondary flex-shrink-0" />
+                      <span className="text-sm font-medium text-text-primary truncate">{repo.name}</span>
+                      {repo.language && (
+                        <span className="hidden sm:block text-xs text-text-secondary/60 bg-background border border-border px-2 py-0.5 rounded-full">{repo.language}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <span className="flex items-center gap-1 text-xs text-text-secondary">
+                        <Star className="w-3 h-3" />{repo.stargazers_count}
+                      </span>
+                      <ExternalLink className="w-3.5 h-3.5 text-text-secondary group-hover:text-primary transition-colors" />
+                    </div>
+                  </motion.a>
+                ))}
+              </div>
+            </motion.div>
+          )}
         </div>
 
-        <div className="space-y-6">
+        {/* Right column */}
+        <div className="space-y-5">
           {/* Skills */}
-          <motion.div variants={sectionVariants} className="bg-surface border border-border rounded-xl p-6 shadow-sm">
-            <h2 className="text-xl font-bold text-text-primary mb-4">Top Skills</h2>
-            <motion.div 
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
-              variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
-              className="flex flex-wrap gap-2"
-            >
-              {['React', 'TypeScript', 'Node.js', 'Tailwind', 'Next.js', 'GraphQL', 'AWS', 'Postgres'].map(skill => (
-                 <motion.span variants={badgeVariants} whileHover={{ scale: 1.1 }} key={skill} className="px-3 py-1.5 bg-background border border-border rounded-lg text-xs font-medium text-text-primary hover:border-primary hover:text-primary transition-colors cursor-default">
-                   {skill}
-                 </motion.span>
-              ))}
+          {skills.length > 0 && (
+            <motion.div variants={sectionVariants} className="bg-surface border border-border rounded-2xl p-6 shadow-sm">
+              <h2 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2">
+                <Code2 className="w-4 h-4 text-primary" /> Skills
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                <AnimatePresence>
+                  {skills.map((s, i) => (
+                    <motion.span
+                      key={i}
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ delay: i * 0.03 }}
+                      whileHover={{ scale: 1.08 }}
+                      className="px-3 py-1.5 bg-background border border-border rounded-xl text-xs font-medium text-text-primary hover:border-primary/50 hover:text-primary transition-colors cursor-default"
+                    >
+                      {s.skill_name}
+                    </motion.span>
+                  ))}
+                </AnimatePresence>
+              </div>
             </motion.div>
-          </motion.div>
-          
+          )}
+
           {/* Education */}
-          <motion.div variants={sectionVariants} className="bg-surface border border-border rounded-xl p-6 shadow-sm">
-            <h2 className="text-xl font-bold text-text-primary mb-4">Education</h2>
-            <motion.div whileHover={{ x: 5 }} className="flex gap-4 cursor-default">
-                 <div className="w-10 h-10 bg-background border border-border rounded-lg flex items-center justify-center font-bold text-lg text-primary flex-shrink-0 shadow-inner">
-                  U
-                </div>
-                 <div>
-                    <h3 className="font-semibold text-text-primary text-sm">University of Technology</h3>
-                    <p className="text-xs text-text-secondary mt-1">B.S. Computer Science</p>
-                    <p className="text-xs text-text-secondary mt-1">2014 - 2018</p>
-                 </div>
-              </motion.div>
-          </motion.div>
+          {education.length > 0 && (
+            <motion.div variants={sectionVariants} className="bg-surface border border-border rounded-2xl p-6 shadow-sm">
+              <h2 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2">
+                <GraduationCap className="w-4 h-4 text-primary" /> Education
+              </h2>
+              <div className="space-y-4">
+                {education.map((edu, i) => (
+                  <motion.div key={i} whileHover={{ x: 4 }} className="flex gap-3 cursor-default">
+                    <div className="w-9 h-9 bg-background border border-border rounded-xl flex items-center justify-center font-bold text-primary flex-shrink-0 text-sm shadow-inner">
+                      {edu.college_name?.[0]?.toUpperCase() || 'U'}
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-text-primary">{edu.college_name}</h3>
+                      <p className="text-xs text-text-secondary">{edu.degree}</p>
+                      <p className="text-xs text-text-secondary/70 mt-0.5 flex items-center gap-2">
+                        {edu.graduation_year}
+                        {edu.grade && <span>· {edu.grade}</span>}
+                      </p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
         </div>
       </div>
     </motion.div>

@@ -4,6 +4,9 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+// Initialize Firebase Admin (must happen before any route imports)
+import "./config/firebaseAdmin.js";
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -14,19 +17,23 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Routes
 import { feedRouter } from "./routes/feed.js";
 import { requestRouter } from "./routes/request.js";
 import { jobsRouter } from "./routes/jobs.js";
+import { authRouter } from "./routes/auth.js";
+import { profileRouter } from "./routes/profile.js";
 
+app.use("/api", authRouter);
+app.use("/api", profileRouter);
 app.use("/api", feedRouter);
 app.use("/api", requestRouter);
 app.use("/api", jobsRouter);
 
-// Basic route
 app.get("/", (req, res) => {
-  res.send("DevTinder API is running!");
+  res.json({ message: "DevTinder API is running 🔥", version: "2.0" });
 });
 
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });

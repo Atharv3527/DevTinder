@@ -1,42 +1,79 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth } from '../config/firebase';
+import axios from 'axios';
 
 const AuthContext = createContext();
 
-export function AuthProvider({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-  // Load from local storage on mount
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);         // Firebase user object
+  const [dbUser, setDbUser] = useState(null);     // Supabase user record
+  const [profile, setProfile] = useState(null);   // Supabase profile record
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);   // Auth state loading
+
+  // Listen to Firebase auth state
   useEffect(() => {
-    const storedAuth = localStorage.getItem('devTinderAuth');
-    if (storedAuth) {
-      setIsAuthenticated(true);
-      setUser(JSON.parse(storedAuth));
-    }
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        setUser(firebaseUser);
+        setIsAuthenticated(true);
+        // Sync user to Supabase and get profile status
+        await syncUser(firebaseUser);
+      } else {
+        setUser(null);
+        setDbUser(null);
+        setProfile(null);
+        setIsAuthenticated(false);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const login = (email) => {
-    // Mock login credentials check
-    const mockUser = { email, name: 'Jane Developer' };
-    setIsAuthenticated(true);
-    setUser(mockUser);
-    localStorage.setItem('devTinderAuth', JSON.stringify(mockUser));
+  const syncUser = async (firebaseUser) => {
+    try {
+      const token = await firebaseUser.getIdToken();
+      const res = await axios.post(
+        `${API}/api/auth/sync`,
+        { full_name: firebaseUser.displayName },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setDbUser(res.data.user);
+      // Profile completeness flag available via res.data.profileComplete
+    } catch (err) {
+      console.error('Failed to sync user to Supabase:', err);
+    }
   };
 
-  const signup = (userData) => {
-    setIsAuthenticated(true);
-    setUser(userData);
-    localStorage.setItem('devTinderAuth', JSON.stringify(userData));
+  // Get Firebase ID token for making authenticated API calls
+  const getToken = async () => {
+    if (!user) return null;
+    return await user.getIdToken();
   };
 
-  const logout = () => {
-    setIsAuthenticated(false);
+  const logout = async () => {
+    await signOut(auth);
     setUser(null);
-    localStorage.removeItem('devTinderAuth');
+    setDbUser(null);
+    setProfile(null);
+    setIsAuthenticated(false);
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, signup, logout }}>
+    <AuthContext.Provider value={{
+      user,
+      dbUser,
+      profile,
+      setProfile,
+      isAuthenticated,
+      loading,
+      getToken,
+      logout,
+    }}>
       {children}
     </AuthContext.Provider>
   );

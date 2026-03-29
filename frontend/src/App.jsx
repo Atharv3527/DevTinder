@@ -12,10 +12,23 @@ import Profile from './pages/Profile';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Notifications from './pages/Notifications';
+import ProfileSetup from './pages/ProfileSetup';
 
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+    </div>
+  );
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+  return children;
+};
+
+const PublicRoute = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) return null;
+  if (isAuthenticated) return <Navigate to="/feed" replace />;
   return children;
 };
 
@@ -49,6 +62,14 @@ function AppRoutes() {
           }
         />
         <Route
+          path="profile-setup"
+          element={
+            <ProtectedRoute>
+              <ProfileSetup />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="notifications"
           element={
             <ProtectedRoute>
@@ -56,8 +77,8 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        <Route path="login" element={<Login />} />
-        <Route path="signup" element={<Signup />} />
+        <Route path="login" element={<PublicRoute><Login /></PublicRoute>} />
+        <Route path="signup" element={<PublicRoute><Signup /></PublicRoute>} />
       </Route>
     </Routes>
   );
