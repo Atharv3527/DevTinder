@@ -22,9 +22,24 @@ app.use("/api", feedRouter);
 app.use("/api", requestRouter);
 app.use("/api", jobsRouter);
 
-// Basic route
-app.get("/", (req, res) => {
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Serve Static React Build
+const frontendDistPath = path.join(__dirname, "../frontend/dist");
+app.use(express.static(frontendDistPath));
+
+// Basic API route
+app.get("/api/health", (req, res) => {
   res.send("DevTinder API is running!");
+});
+
+// React Router SPA Catch-all Wildcard
+app.get("(.*)", (req, res) => {
+  res.sendFile(path.join(frontendDistPath, "index.html"));
 });
 
 app.listen(PORT, () => {
