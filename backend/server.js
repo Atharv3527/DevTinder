@@ -14,6 +14,12 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+import { feedRouter } from "./routes/feed.js";
+import { requestRouter } from "./routes/request.js";
+
+app.use("/api", feedRouter);
+app.use("/api", requestRouter);
+
 // Basic route
 app.get("/", (req, res) => {
   res.send("DevTinder API is running!");
