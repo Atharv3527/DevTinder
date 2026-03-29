@@ -37,7 +37,7 @@ export default function Jobs() {
       if (location !== 'All India') query.append('location', location);
       
       // In production development using localhost backend proxy or absolute URL
-      const response = await fetch(`/api/jobs?${query.toString()}`);
+      const response = await fetch(`http://localhost:5000/api/jobs?${query.toString()}`);
       if (!response.ok) throw new Error("Failed to fetch jobs");
       const result = await response.json();
       

@@ -14,7 +14,7 @@ export default function Feed() {
     const fetchFeed = async () => {
       try {
         const res = await axios.get('/api/feed', { 
-          baseURL: import.meta.env.VITE_API_URL || '',
+          baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000',
           withCredentials: true 
         });
         setCards(res.data.data);
@@ -54,7 +54,7 @@ export default function Feed() {
     try {
       const endpoint = actionType === 'accept' ? '/api/request/send' : '/api/request/reject';
       await axios.post(`${endpoint}/${id}`, {}, {
-        baseURL: import.meta.env.VITE_API_URL || '',
+        baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000',
         withCredentials: true 
       });
     } catch (err) {
