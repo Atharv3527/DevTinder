@@ -23,7 +23,7 @@ function timeAgo(iso) {
 export default function Notifications() {
   const { isAuthenticated, getToken } = useAuth();
   const navigate = useNavigate();
-  const [requests, setRequests] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busyIds, setBusyIds] = useState(() => new Set());
   const [error, setError] = useState('');
@@ -49,36 +49,49 @@ export default function Notifications() {
   useEffect(() => {
     let active = true;
 
-    const fetchPending = async () => {
+    const fetchNotifications = async () => {
       setLoading(true);
       setError('');
       try {
         const token = await getToken();
-        const res = await axios.get(`${API}/api/connections/pending`, {
+        const res = await axios.get(`${API}/api/notifications`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!active) return;
-        setRequests(res.data.requests || []);
+        setNotifications(res.data.notifications || []);
       } catch (e) {
         if (!active) return;
-        console.error('Pending requests fetch error:', e);
-        setError(e?.response?.data?.error || e.message || 'Failed to load requests');
+        console.error('Notifications fetch error:', e);
+        setError(e?.response?.data?.error || e.message || 'Failed to load notifications');
       } finally {
         if (active) setLoading(false);
       }
     };
 
-    fetchPending();
+    fetchNotifications();
     return () => { active = false; };
   }, [getToken]);
 
-  const unreadCount = requests.length;
+  // Mark unread as read after 3 seconds on page
+  useEffect(() => {
+    const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
+    if (unreadIds.length > 0) {
+      const timer = setTimeout(async () => {
+        try {
+          const token = await getToken();
+          await axios.post(`${API}/api/notifications/mark-read`, { notificationIds: unreadIds }, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          setNotifications(prev => prev.map(n => unreadIds.includes(n.id) ? { ...n, is_read: true } : n));
+        } catch (e) {
+          console.error('Failed to mark read', e);
+        }
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notifications, getToken]);
 
-  const markAllRead = () => {
-    // Pending requests are actionable; we don't persist read-state yet.
-    // Keeping a no-op button would be confusing; so we route users to Community instead.
-    navigate('/community');
-  };
+  const newCount = notifications.filter(n => !n.is_read).length;
 
   const setBusy = (id, isBusy) => {
     setBusyIds((prev) => {
@@ -89,57 +102,74 @@ export default function Notifications() {
     });
   };
 
-  const acceptRequest = async (connectionId) => {
-    setBusy(connectionId, true);
+  const acceptRequest = async (connectionId, notificationId) => {
+    setBusy(notificationId, true);
     setError('');
     try {
       const token = await getToken();
       await axios.post(`${API}/api/request/accept/${connectionId}`, null, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setRequests((prev) => prev.filter((r) => r.id !== connectionId));
+      // Mark local state as accepted
+      setNotifications((prev) => prev.map((n) => n.id === notificationId ? { ...n, is_read: true, answered: true } : n));
     } catch (e) {
       console.error('Accept request error:', e);
       setError(e?.response?.data?.error || e.message || 'Failed to accept request');
     } finally {
-      setBusy(connectionId, false);
+      setBusy(notificationId, false);
     }
   };
 
-  const rejectRequest = async (connectionId) => {
-    setBusy(connectionId, true);
+  const rejectRequest = async (connectionId, notificationId) => {
+    setBusy(notificationId, true);
     setError('');
     try {
       const token = await getToken();
       await axios.post(`${API}/api/request/reject/${connectionId}`, null, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setRequests((prev) => prev.filter((r) => r.id !== connectionId));
+      // Mark local state as rejected
+      setNotifications((prev) => prev.map((n) => n.id === notificationId ? { ...n, is_read: true, answered: true } : n));
     } catch (e) {
       console.error('Reject request error:', e);
       setError(e?.response?.data?.error || e.message || 'Failed to decline request');
     } finally {
-      setBusy(connectionId, false);
+      setBusy(notificationId, false);
     }
   };
 
-  const cards = useMemo(() => {
-    return requests.map((r) => {
-      const dev = r.developers;
+  const deleteNotification = async (notificationId) => {
+    try {
+      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+      const token = await getToken();
+      await axios.delete(`${API}/api/notifications/${notificationId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch (err) {
+      console.error('Delete notification error:', err);
+    }
+  };
+
+  const categorized = useMemo(() => {
+    const newNotifs = [];
+    const oldNotifs = [];
+    notifications.forEach((r) => {
+      const dev = r.actor;
       const name = dev?.full_name || 'Developer';
       const initials = name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
-      return {
-        id: r.id,
-        connectionId: r.id,
-        createdAt: r.created_at,
+      const item = {
+        ...r,
         dev,
         name,
         initials,
         bio: dev?.bio || '',
         uid: dev?.firebase_uid,
       };
+      if (!r.is_read) newNotifs.push(item);
+      else oldNotifs.push(item);
     });
-  }, [requests]);
+    return { newNotifs, oldNotifs };
+  }, [notifications]);
 
   return (
     <div className="w-full max-w-2xl mx-auto px-4 py-8">
@@ -155,28 +185,27 @@ export default function Notifications() {
             <div className="w-10 h-10 bg-primary/15 rounded-xl flex items-center justify-center border border-primary/25">
               <Bell className="w-5 h-5 text-primary" />
             </div>
-            {unreadCount > 0 && (
+            {newCount > 0 && (
               <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-lg shadow-primary/40">
-                {unreadCount}
+                {newCount}
               </span>
             )}
           </div>
           <div>
             <h1 className="text-2xl font-bold text-white tracking-tight">Notifications</h1>
             <p className="text-zinc-500 text-sm">
-              {loading ? 'Loading…' : unreadCount > 0 ? `${unreadCount} pending request${unreadCount === 1 ? '' : 's'}` : 'All caught up!'}
+              {loading ? 'Loading…' : newCount > 0 ? `${newCount} new notification${newCount === 1 ? '' : 's'}` : 'All caught up!'}
             </p>
           </div>
         </div>
 
-        {unreadCount > 0 && !loading && (
+        {newCount === 0 && !loading && (
           <motion.button
             whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.96 }}
-            onClick={markAllRead}
+            onClick={() => navigate('/community')}
             className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold text-primary hover:bg-primary/10 border border-primary/20 transition-all"
           >
-            <Check className="w-4 h-4" />
             Go to Community
           </motion.button>
         )}
@@ -188,8 +217,8 @@ export default function Notifications() {
         </div>
       )}
 
-      {/* Notification List */}
-      <div className="space-y-3">
+      {/* Notification Lists */}
+      <div className="space-y-6">
         <AnimatePresence mode="popLayout">
           {loading ? (
             <motion.div
@@ -201,10 +230,10 @@ export default function Notifications() {
             >
               <div className="flex items-center gap-2 text-zinc-400">
                 <Loader2 className="w-5 h-5 animate-spin" />
-                <span className="text-sm font-medium">Loading requests…</span>
+                <span className="text-sm font-medium">Loading notifications…</span>
               </div>
             </motion.div>
-          ) : cards.length === 0 ? (
+          ) : notifications.length === 0 ? (
             <motion.div
               key="empty"
               initial={{ opacity: 0, scale: 0.95 }}
@@ -215,98 +244,136 @@ export default function Notifications() {
               <div className="w-16 h-16 bg-zinc-800/60 rounded-full flex items-center justify-center border border-white/10 mb-4">
                 <Users className="w-7 h-7 text-zinc-600" />
               </div>
-              <p className="text-zinc-400 font-medium">No pending requests</p>
-              <p className="text-zinc-600 text-sm mt-1">When someone connects with you, it’ll show up here.</p>
+              <p className="text-zinc-400 font-medium">You have no notifications</p>
+              <p className="text-zinc-600 text-sm mt-1">Once you interact with developers, things will appear here.</p>
             </motion.div>
           ) : (
-            cards.map((c, idx) => {
-              const isBusy = busyIds.has(c.connectionId);
-              return (
-                <motion.div
-                  key={c.id}
-                  layout
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -30, transition: { duration: 0.2 } }}
-                  transition={{ delay: idx * 0.04, duration: 0.35 }}
-                  className="relative group flex items-start gap-4 p-4 rounded-2xl border bg-surface/60 border-white/10 hover:bg-surface/80 shadow-lg shadow-black/20 transition-all duration-200"
-                >
-                  <span className="absolute top-4 right-4 w-2 h-2 bg-primary rounded-full shadow-sm shadow-primary/50" />
-
-                  {/* Avatar */}
-                  <button
-                    onClick={() => c.uid && navigate(`/profile/${c.uid}`)}
-                    className="w-12 h-12 rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 flex items-center justify-center font-black text-white text-sm shrink-0 shadow-md"
-                    disabled={!c.uid}
-                    title={c.uid ? 'View profile' : 'Profile unavailable'}
-                  >
-                    {c.dev?.profile_image_url ? (
-                      <img src={c.dev.profile_image_url} alt={c.name} className="w-full h-full object-cover" />
-                    ) : (
-                      c.initials
-                    )}
-                  </button>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <button
-                        onClick={() => c.uid && navigate(`/profile/${c.uid}`)}
-                        className="font-bold text-white text-sm hover:text-primary transition-colors"
-                        disabled={!c.uid}
-                      >
-                        {c.name}
-                      </button>
-                      <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-primary/15 text-primary border border-primary/20">
-                        New Request
-                      </span>
-                    </div>
-                    <p className="text-zinc-400 text-sm mt-0.5">
-                      {c.bio ? c.bio : 'Wants to connect with you.'}
-                    </p>
-                    <div className="flex items-center gap-1 mt-1.5">
-                      <Clock className="w-3 h-3 text-zinc-600" />
-                      <span className="text-zinc-600 text-xs">{timeAgo(c.createdAt)}</span>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
-                      <motion.button
-                        whileHover={{ scale: 1.04 }}
-                        whileTap={{ scale: 0.96 }}
-                        onClick={() => acceptRequest(c.connectionId)}
-                        disabled={isBusy}
-                        className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 rounded-full text-xs font-semibold hover:bg-emerald-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                        Accept
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.04 }}
-                        whileTap={{ scale: 0.96 }}
-                        onClick={() => rejectRequest(c.connectionId)}
-                        disabled={isBusy}
-                        className="flex items-center gap-1.5 px-4 py-1.5 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full text-xs font-semibold hover:bg-red-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                        Decline
-                      </motion.button>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setRequests((p) => p.filter((r) => r.id !== c.connectionId)); }}
-                    className="absolute top-3 right-8 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-white/10 text-zinc-600 hover:text-zinc-300"
-                    title="Hide"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </motion.div>
-              );
-            })
+            <>
+              {categorized.newNotifs.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-white/80 text-sm font-semibold ml-1">New</h3>
+                  {categorized.newNotifs.map(c => <NotificationCard key={c.id} c={c} isBusy={busyIds.has(c.id)} acceptRequest={acceptRequest} rejectRequest={rejectRequest} deleteNotification={deleteNotification} navigate={navigate} />)}
+                </div>
+              )}
+              {categorized.oldNotifs.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-white/40 text-sm font-semibold ml-1 mt-4">Earlier</h3>
+                  {categorized.oldNotifs.map(c => <NotificationCard key={c.id} c={c} isBusy={busyIds.has(c.id)} acceptRequest={acceptRequest} rejectRequest={rejectRequest} deleteNotification={deleteNotification} navigate={navigate} />)}
+                </div>
+              )}
+            </>
           )}
         </AnimatePresence>
       </div>
     </div>
+  );
+}
+
+function NotificationCard({ c, isBusy, acceptRequest, rejectRequest, deleteNotification, navigate }) {
+  // Determine message string based on type
+  let message = "";
+  let badge = "";
+  let badgeColor = "";
+
+  if (c.type === "connection_request") {
+    message = c.bio ? c.bio : 'Wants to connect with you.';
+    badge = "New Request";
+    badgeColor = "bg-primary/15 text-primary border-primary/20";
+  } else if (c.type === "accepted") {
+    message = "Has accepted your connection request.";
+    badge = "Accepted";
+    badgeColor = "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
+  } else if (c.type === "rejected") {
+    message = "Has declined your connection request.";
+    badge = "Declined";
+    badgeColor = "bg-red-500/15 text-red-400 border-red-500/30";
+  }
+
+  const isOldRequest = c.type === 'connection_request' && c.is_read;
+  const isAnswered = c.answered === true;
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, x: -30, transition: { duration: 0.2 } }}
+      className={`relative group flex items-start gap-4 p-4 rounded-2xl border ${c.is_read ? 'bg-surface/30 border-white/5 opacity-80' : 'bg-surface/60 border-white/10 hover:bg-surface/80'} shadow-lg shadow-black/20 transition-all duration-200`}
+    >
+      {!c.is_read && <span className="absolute top-4 right-4 w-2 h-2 bg-primary rounded-full shadow-sm shadow-primary/50" />}
+
+      {/* Avatar */}
+      <button
+        onClick={() => c.uid && navigate(`/profile/${c.uid}`)}
+        className="w-12 h-12 rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 flex items-center justify-center font-black text-white text-sm shrink-0 shadow-md"
+        disabled={!c.uid}
+        title={c.uid ? 'View profile' : 'Profile unavailable'}
+      >
+        {c.dev?.profile_image_url ? (
+          <img src={c.dev.profile_image_url} alt={c.name} className="w-full h-full object-cover" />
+        ) : (
+          c.initials
+        )}
+      </button>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => c.uid && navigate(`/profile/${c.uid}`)}
+            className="font-bold text-white text-sm hover:text-primary transition-colors"
+            disabled={!c.uid}
+          >
+            {c.name}
+          </button>
+          {!isAnswered && (
+            <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border ${badgeColor}`}>
+              {badge}
+            </span>
+          )}
+        </div>
+        <p className={`text-sm mt-0.5 ${c.is_read ? 'text-zinc-500' : 'text-zinc-400'}`}>
+          {isAnswered ? "Request answered." : message}
+        </p>
+        <div className="flex items-center gap-1 mt-1.5">
+          <Clock className="w-3 h-3 text-zinc-600" />
+          <span className="text-zinc-600 text-xs">{timeAgo(c.created_at)}</span>
+        </div>
+
+        {/* Actions for connection requests */}
+        {c.type === "connection_request" && !isAnswered && !isOldRequest && (
+          <div className="flex gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
+            <motion.button
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={() => acceptRequest(c.connection_id, c.id)}
+              disabled={isBusy}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 rounded-full text-xs font-semibold hover:bg-emerald-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+              Accept
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={() => rejectRequest(c.connection_id, c.id)}
+              disabled={isBusy}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full text-xs font-semibold hover:bg-red-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <X className="w-3.5 h-3.5" />
+              Decline
+            </motion.button>
+          </div>
+        )}
+      </div>
+
+      <button
+        onClick={(e) => { e.stopPropagation(); deleteNotification(c.id); }}
+        className="absolute top-3 right-8 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-white/10 text-zinc-600 hover:text-zinc-300"
+        title="Hide"
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
+    </motion.div>
   );
 }

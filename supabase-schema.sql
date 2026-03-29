@@ -67,6 +67,23 @@ CREATE INDEX idx_chats_receiver       ON public.chats(receiver_id);
 CREATE INDEX idx_chats_created        ON public.chats(created_at);
 
 -- ─────────────────────────────────────────────
+-- 4. NOTIFICATIONS
+-- ─────────────────────────────────────────────
+CREATE TABLE public.notifications (
+  id            UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id       TEXT NOT NULL REFERENCES public.developers(firebase_uid) ON DELETE CASCADE,
+  actor_id      TEXT NOT NULL REFERENCES public.developers(firebase_uid) ON DELETE CASCADE,
+  type          TEXT NOT NULL CHECK (type IN ('connection_request', 'accepted', 'rejected')),
+  connection_id UUID REFERENCES public.connections(id) ON DELETE CASCADE,
+  is_read       BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at    TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+
+CREATE INDEX idx_notifications_user_id  ON public.notifications(user_id);
+CREATE INDEX idx_notifications_actor_id ON public.notifications(actor_id);
+CREATE INDEX idx_notifications_created  ON public.notifications(created_at);
+
+-- ─────────────────────────────────────────────
 -- NOTES
 -- ─────────────────────────────────────────────
 -- Storage buckets required (create manually in Supabase Dashboard > Storage):

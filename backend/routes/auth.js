@@ -50,7 +50,13 @@ authRouter.post("/sync", userAuth, async (req, res) => {
     res.json({ success: true, developer: data, profileComplete });
   } catch (err) {
     console.error("Auth sync error:", err);
-    res.status(500).json({ error: err.message });
+    const code = err?.code || err?.details;
+    res.status(500).json({
+      error: err.message || "Sync failed",
+      code: err?.code,
+      details: err?.details,
+      hint: err?.hint,
+    });
   }
 });
 

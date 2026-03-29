@@ -28,7 +28,7 @@ requestRouter.post("/send/:toUserId", userAuth, async (req, res) => {
       return res.status(409).json({ error: "Connection already exists", status: existing.status });
     }
 
-    const { data, error } = await supabase
+    const { data: connData, error } = await supabase
       .from("connections")
       .insert({ sender_id: senderId, receiver_id: receiverId, status: "pending" })
       .select()
@@ -36,7 +36,14 @@ requestRouter.post("/send/:toUserId", userAuth, async (req, res) => {
 
     if (error) throw error;
 
-    res.json({ message: "Connection request sent", data });
+    await supabase.from("notifications").insert({
+      user_id: receiverId,
+      actor_id: senderId,
+      type: "connection_request",
+      connection_id: connData.id
+    });
+
+    res.json({ message: "Connection request sent", data: connData });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -48,7 +55,7 @@ requestRouter.post("/accept/:connectionId", userAuth, async (req, res) => {
     const uid = req.user.uid;
     const { connectionId } = req.params;
 
-    const { data, error } = await supabase
+    const { data: connData, error } = await supabase
       .from("connections")
       .update({ status: "accepted" })
       .eq("id", connectionId)
@@ -57,9 +64,23 @@ requestRouter.post("/accept/:connectionId", userAuth, async (req, res) => {
       .single();
 
     if (error) throw error;
-    if (!data) return res.status(404).json({ error: "Connection not found" });
+    if (!connData) return res.status(404).json({ error: "Connection not found" });
 
-    res.json({ message: "Connection accepted", data });
+    await supabase.from("notifications").insert({
+      user_id: connData.sender_id,
+      actor_id: uid,
+      type: "accepted",
+      connection_id: connectionId
+    });
+
+    // Mark the original connection_request notification as read for the receiver
+    await supabase.from("notifications")
+      .update({ is_read: true })
+      .eq("user_id", uid)
+      .eq("connection_id", connectionId)
+      .eq("type", "connection_request");
+
+    res.json({ message: "Connection accepted", data: connData });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -71,7 +92,7 @@ requestRouter.post("/reject/:connectionId", userAuth, async (req, res) => {
     const uid = req.user.uid;
     const { connectionId } = req.params;
 
-    const { data, error } = await supabase
+    const { data: connData, error } = await supabase
       .from("connections")
       .update({ status: "rejected" })
       .eq("id", connectionId)
@@ -80,9 +101,23 @@ requestRouter.post("/reject/:connectionId", userAuth, async (req, res) => {
       .single();
 
     if (error) throw error;
-    if (!data) return res.status(404).json({ error: "Connection not found" });
+    if (!connData) return res.status(404).json({ error: "Connection not found" });
 
-    res.json({ message: "Connection rejected", data });
+    await supabase.from("notifications").insert({
+      user_id: connData.sender_id,
+      actor_id: uid,
+      type: "rejected",
+      connection_id: connectionId
+    });
+
+    // Mark the original connection_request notification as read for the receiver
+    await supabase.from("notifications")
+      .update({ is_read: true })
+      .eq("user_id", uid)
+      .eq("connection_id", connectionId)
+      .eq("type", "connection_request");
+
+    res.json({ message: "Connection rejected", data: connData });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

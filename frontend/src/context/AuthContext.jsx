@@ -46,7 +46,9 @@ export function AuthProvider({ children }) {
         if (dev?.firebase_uid !== firebaseUser.uid) return;
         setDbUser(dev);
       } catch (err) {
-        console.error('Failed to sync user:', err);
+        const status = err.response?.status;
+        const body = err.response?.data;
+        console.error('Failed to sync user:', status, body || err.message);
         if (seq === syncSeqRef.current) setDbUser(null);
       } finally {
         if (seq === syncSeqRef.current) setLoading(false);

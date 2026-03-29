@@ -32,7 +32,6 @@ feedRouter.get("/", userAuth, async (req, res) => {
       .from("developers")
       .select("firebase_uid, full_name, profile_image_url, bio, skills, github_url, address")
       .not("firebase_uid", "in", `(${excludeIds.map((id) => `"${id}"`).join(",")})`)
-      .not("bio", "is", null)
       .range(offset, offset + limit - 1);
 
     if (error) throw error;
