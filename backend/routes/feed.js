@@ -31,7 +31,7 @@ feedRouter.get("/", userAuth, async (req, res) => {
     const { data: developers, error } = await supabase
       .from("developers")
       .select("firebase_uid, full_name, profile_image_url, bio, skills, github_url, address")
-      .not("firebase_uid", "in", `(${excludeIds.map((id) => `"${id}"`).join(",")})`)
+      .not("firebase_uid", "in", `(${excludeIds.join(",")})`)
       .range(offset, offset + limit - 1);
 
     if (error) throw error;
