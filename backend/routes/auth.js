@@ -1,4 +1,5 @@
 import express from "express";
+import admin from "../config/firebaseAdmin.js";
 import { userAuth } from "../middlewares/auth.js";
 import { supabase } from "../config/supabase.js";
 
@@ -7,8 +8,25 @@ export const authRouter = express.Router();
 // POST /api/auth/sync — upsert developer record after Firebase login
 authRouter.post("/sync", userAuth, async (req, res) => {
   try {
-    const { uid, email } = req.user;
+    const { uid } = req.user;
+    let { email } = req.user;
     const { full_name, profile_image_url } = req.body;
+
+    // ID token sometimes omits email; Admin SDK always has it for Google sign-in.
+    if (!email && admin.apps?.length) {
+      try {
+        const record = await admin.auth().getUser(uid);
+        email = record.email || email;
+      } catch (e) {
+        console.warn("auth/sync: getUser fallback failed:", e?.message);
+      }
+    }
+
+    if (!email) {
+      return res.status(400).json({ error: "No email on Firebase user; cannot sync developers row" });
+    }
+
+    const safeName = (full_name && String(full_name).trim()) || email.split("@")[0];
 
     const { data, error } = await supabase
       .from("developers")
@@ -16,7 +34,7 @@ authRouter.post("/sync", userAuth, async (req, res) => {
         {
           firebase_uid: uid,
           email,
-          full_name: full_name || email.split("@")[0],
+          full_name: safeName,
           ...(profile_image_url && { profile_image_url }),
           updated_at: new Date().toISOString(),
         },
