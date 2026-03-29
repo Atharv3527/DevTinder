@@ -16,9 +16,11 @@ app.use(express.urlencoded({ extended: true }));
 
 import { feedRouter } from "./routes/feed.js";
 import { requestRouter } from "./routes/request.js";
+import { jobsRouter } from "./routes/jobs.js";
 
 app.use("/api", feedRouter);
 app.use("/api", requestRouter);
+app.use("/api", jobsRouter);
 
 // Basic route
 app.get("/", (req, res) => {
