@@ -15,6 +15,8 @@ function isAllowedCorsOrigin(origin) {
   if (origin === "http://localhost:5173") return true;
   if (process.env.CLIENT_URL && origin === process.env.CLIENT_URL) return true;
   if (/^https:\/\/[a-z0-9.-]+\.vercel\.app$/i.test(origin)) return true;
+  if (/^https:\/\/[a-z0-9.-]+\.web\.app$/i.test(origin)) return true;
+  if (/^https:\/\/[a-z0-9.-]+\.firebaseapp\.com$/i.test(origin)) return true;
   return false;
 }
 
