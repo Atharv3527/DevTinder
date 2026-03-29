@@ -4,17 +4,22 @@ import { supabase } from "../config/supabase.js";
 
 export const authRouter = express.Router();
 
-// POST /api/auth/sync — called after Firebase login to upsert user in Supabase
+// POST /api/auth/sync — upsert developer record after Firebase login
 authRouter.post("/auth/sync", userAuth, async (req, res) => {
   try {
     const { uid, email } = req.user;
-    const { full_name } = req.body;
+    const { full_name, profile_image_url } = req.body;
 
-    // Upsert user in Supabase users table
     const { data, error } = await supabase
-      .from("users")
+      .from("developers")
       .upsert(
-        { firebase_uid: uid, email, full_name: full_name || email.split("@")[0] },
+        {
+          firebase_uid: uid,
+          email,
+          full_name: full_name || email.split("@")[0],
+          ...(profile_image_url && { profile_image_url }),
+          updated_at: new Date().toISOString(),
+        },
         { onConflict: "firebase_uid" }
       )
       .select()
@@ -22,44 +27,29 @@ authRouter.post("/auth/sync", userAuth, async (req, res) => {
 
     if (error) throw error;
 
-    // Check if profile already exists
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("user_id, github_url")
-      .eq("user_id", uid)
-      .single();
+    const profileComplete = !!(data.bio && data.github_url);
 
-    res.json({
-      success: true,
-      user: data,
-      profileComplete: !!(profile && profile.github_url),
-    });
+    res.json({ success: true, developer: data, profileComplete });
   } catch (err) {
     console.error("Auth sync error:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET /api/auth/me — get current user info
+// GET /api/auth/me
 authRouter.get("/auth/me", userAuth, async (req, res) => {
   try {
     const { uid } = req.user;
 
-    const { data: user, error } = await supabase
-      .from("users")
+    const { data, error } = await supabase
+      .from("developers")
       .select("*")
       .eq("firebase_uid", uid)
       .single();
 
-    if (error) throw error;
+    if (error && error.code !== "PGRST116") throw error;
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("user_id", uid)
-      .single();
-
-    res.json({ user, profile: profile || null });
+    res.json({ developer: data || null });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

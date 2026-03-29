@@ -1,8 +1,6 @@
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
-
-dotenv.config();
 
 // Initialize Firebase Admin (must happen before any route imports)
 import "./config/firebaseAdmin.js";
@@ -23,11 +21,13 @@ import { requestRouter } from "./routes/request.js";
 import { jobsRouter } from "./routes/jobs.js";
 import { authRouter } from "./routes/auth.js";
 import { profileRouter } from "./routes/profile.js";
+import { chatRouter } from "./routes/chat.js";
 
 app.use("/api", authRouter);
 app.use("/api", profileRouter);
 app.use("/api", feedRouter);
 app.use("/api", requestRouter);
+app.use("/api", chatRouter);
 app.use("/api", jobsRouter);
 
 app.get("/", (req, res) => {

@@ -61,6 +61,7 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route path="profile/:uid" element={<Profile />} />
         <Route
           path="profile-setup"
           element={

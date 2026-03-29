@@ -4,130 +4,88 @@ import { supabase } from "../config/supabase.js";
 
 export const profileRouter = express.Router();
 
-// GET /api/profile — get current user's full profile
+// GET /api/profile — own profile
 profileRouter.get("/profile", userAuth, async (req, res) => {
   try {
     const { uid } = req.user;
 
-    const { data: profile, error } = await supabase
-      .from("profiles")
+    const { data, error } = await supabase
+      .from("developers")
       .select("*")
-      .eq("user_id", uid)
+      .eq("firebase_uid", uid)
       .single();
 
     if (error && error.code !== "PGRST116") throw error;
 
-    const { data: skills } = await supabase
-      .from("skills")
-      .select("*")
-      .eq("user_id", uid);
-
-    const { data: experience } = await supabase
-      .from("experience")
-      .select("*")
-      .eq("user_id", uid);
-
-    const { data: education } = await supabase
-      .from("education")
-      .select("*")
-      .eq("user_id", uid);
-
-    res.json({
-      profile: profile || null,
-      skills: skills || [],
-      experience: experience || [],
-      education: education || [],
-    });
+    res.json({ developer: data || null });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// POST /api/profile — create or update profile
+// POST /api/profile — save profile
 profileRouter.post("/profile", userAuth, async (req, res) => {
   try {
     const { uid } = req.user;
-    const { profile, skills, experience, education } = req.body;
+    const {
+      full_name,
+      bio,
+      github_url,
+      address,
+      profile_image_url,
+      background_image_url,
+      skills,
+      experience,
+      education,
+    } = req.body;
 
-    // Upsert profile
-    const { data: savedProfile, error: profileError } = await supabase
-      .from("profiles")
-      .upsert({ user_id: uid, ...profile }, { onConflict: "user_id" })
+    const updatePayload = {
+      firebase_uid: uid,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (full_name !== undefined) updatePayload.full_name = full_name;
+    if (bio !== undefined) updatePayload.bio = bio;
+    if (github_url !== undefined) updatePayload.github_url = github_url;
+    if (address !== undefined) updatePayload.address = address;
+    if (profile_image_url !== undefined) updatePayload.profile_image_url = profile_image_url;
+    if (background_image_url !== undefined) updatePayload.background_image_url = background_image_url;
+    if (skills !== undefined) updatePayload.skills = skills;
+    if (experience !== undefined) updatePayload.experience = experience;
+    if (education !== undefined) updatePayload.education = education;
+
+    const { data, error } = await supabase
+      .from("developers")
+      .upsert(updatePayload, { onConflict: "firebase_uid" })
       .select()
       .single();
 
-    if (profileError) throw profileError;
+    if (error) throw error;
 
-    // Replace skills
-    if (skills !== undefined) {
-      await supabase.from("skills").delete().eq("user_id", uid);
-      if (skills.length > 0) {
-        await supabase.from("skills").insert(
-          skills.map((s) => ({ user_id: uid, skill_name: s }))
-        );
-      }
-    }
-
-    // Replace experience
-    if (experience !== undefined) {
-      await supabase.from("experience").delete().eq("user_id", uid);
-      if (experience.length > 0) {
-        await supabase.from("experience").insert(
-          experience.map((e) => ({ user_id: uid, ...e }))
-        );
-      }
-    }
-
-    // Replace education
-    if (education !== undefined) {
-      await supabase.from("education").delete().eq("user_id", uid);
-      if (education.length > 0) {
-        await supabase.from("education").insert(
-          education.map((e) => ({ user_id: uid, ...e }))
-        );
-      }
-    }
-
-    res.json({ success: true, profile: savedProfile });
+    res.json({ success: true, developer: data });
   } catch (err) {
     console.error("Profile save error:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET /api/profile/:userId — get any user's public profile
-profileRouter.get("/profile/:userId", userAuth, async (req, res) => {
+// GET /api/profile/:uid — public profile
+profileRouter.get("/profile/:uid", userAuth, async (req, res) => {
   try {
-    const { userId } = req.params;
+    const { uid } = req.params;
 
-    const { data: user } = await supabase
-      .from("users")
-      .select("full_name, email")
-      .eq("firebase_uid", userId)
+    const { data, error } = await supabase
+      .from("developers")
+      .select("firebase_uid, full_name, email, profile_image_url, background_image_url, bio, skills, experience, education, github_url, address, created_at")
+      .eq("firebase_uid", uid)
       .single();
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("user_id", userId)
-      .single();
+    if (error) {
+      if (error.code === "PGRST116") return res.status(404).json({ error: "Developer not found" });
+      throw error;
+    }
 
-    const { data: skills } = await supabase
-      .from("skills")
-      .select("skill_name")
-      .eq("user_id", userId);
-
-    const { data: experience } = await supabase
-      .from("experience")
-      .select("*")
-      .eq("user_id", userId);
-
-    const { data: education } = await supabase
-      .from("education")
-      .select("*")
-      .eq("user_id", userId);
-
-    res.json({ user, profile, skills, experience, education });
+    res.json({ developer: data });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

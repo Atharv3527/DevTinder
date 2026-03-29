@@ -6,58 +6,41 @@ const feedRouter = express.Router();
 
 feedRouter.get("/feed", userAuth, async (req, res) => {
   try {
-    const loggedInUserUid = req.user.uid;
-    const page = parseInt(req.query.page) || 1;
-    let limit = parseInt(req.query.limit) || 10;
-    limit = limit > 50 ? 50 : limit;
-    const skip = (page - 1) * limit;
+    const uid = req.user.uid;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(20, parseInt(req.query.limit) || 10);
+    const offset = (page - 1) * limit;
 
-    // In a real tinder-like feed with Supabase, you would filter out already connected users using another table.
-    // Since connections aren't explicitly requested in the DB schema provided by the prompt, 
-    // we will fetch all user profiles except the current user's.
-    
-    // Fetch profiles joined with users, skills, experience, education
-    const { data: profiles, error } = await supabase
-      .from('profiles')
-      .select(`
-        *,
-        users (full_name, email),
-        skills (skill_name),
-        experience (role, company, duration, description),
-        education (degree, graduation_year, college_name, grade)
-      `)
-      .neq('user_id', loggedInUserUid)
-      .range(skip, skip + limit - 1);
+    // Get IDs of already-connected users (both directions)
+    const { data: sent } = await supabase
+      .from("connections")
+      .select("receiver_id")
+      .eq("sender_id", uid);
+
+    const { data: received } = await supabase
+      .from("connections")
+      .select("sender_id")
+      .eq("receiver_id", uid);
+
+    const excludeIds = [
+      uid,
+      ...(sent || []).map((r) => r.receiver_id),
+      ...(received || []).map((r) => r.sender_id),
+    ];
+
+    const { data: developers, error } = await supabase
+      .from("developers")
+      .select("firebase_uid, full_name, profile_image_url, bio, skills, github_url, address")
+      .not("firebase_uid", "in", `(${excludeIds.map((id) => `"${id}"`).join(",")})`)
+      .not("bio", "is", null)
+      .range(offset, offset + limit - 1);
 
     if (error) throw error;
 
-    // Send mock data if database empty for UI demonstration
-    if (!profiles || profiles.length === 0) {
-      return res.json({
-        data: [
-          {
-            user_id: "mock_1",
-            users: { full_name: "Alex Jenkins" },
-            about: "Obsessed with animations and React. Let's build something beautiful together. I specialize in highly interactive WebGL experiences.",
-            profile_photo: "https://i.pravatar.cc/150?u=a042581f4e29026704d",
-            github_url: "https://github.com/alexj",
-            skills: [{skill_name: "React"}, {skill_name: "Three.js"}, {skill_name: "Framer Motion"}]
-          },
-          {
-            user_id: "mock_2",
-            users: { full_name: "Sarah Chen" },
-            about: "Building highly scalable microservices. Currently exploring serverless architectures and distributed systems.",
-            profile_photo: "https://i.pravatar.cc/150?u=a042581f4e29026024d",
-            github_url: "https://github.com/sarah",
-            skills: [{skill_name: "Go"}, {skill_name: "Kubernetes"}, {skill_name: "Docker"}]
-          }
-        ]
-      });
-    }
-
-    res.json({ data: profiles });
+    res.json({ data: developers || [], page, limit });
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    console.error("Feed error:", err);
+    res.status(500).json({ message: err.message, data: [] });
   }
 });
 
