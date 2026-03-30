@@ -62,6 +62,20 @@ export function AuthProvider({ children }) {
     return user.getIdToken();
   };
 
+  /** Refetch developers row after profile save/skip so Navbar and setup stay in sync. */
+  const refreshDbUser = async () => {
+    if (!user) return;
+    try {
+      const token = await user.getIdToken(true);
+      const res = await axios.get(`${API}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setDbUser(res.data?.developer ?? null);
+    } catch (err) {
+      console.error("refreshDbUser failed:", err.response?.data || err.message);
+    }
+  };
+
   const logout = async () => {
     await signOut(auth);
     setUser(null);
@@ -70,7 +84,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, dbUser, isAuthenticated, loading, getToken, logout }}>
+    <AuthContext.Provider value={{ user, dbUser, isAuthenticated, loading, getToken, refreshDbUser, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -12,10 +12,10 @@ export const userAuth = async (req, res, next) => {
     // Verify Firebase ID Token
     const decodedToken = await admin.auth().verifyIdToken(token);
     
-    // Attach user payload
-    req.user = { 
-      uid: decodedToken.uid, 
-      email: decodedToken.email 
+    // Attach user payload (email used for developers.email on first insert)
+    req.user = {
+      uid: decodedToken.uid,
+      email: decodedToken.email || null,
     };
     
     next();

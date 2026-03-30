@@ -43,7 +43,7 @@ function SkeletonProfile() {
 
 export default function Profile() {
   const { uid } = useParams();                  // present when viewing someone else
-  const { user, dbUser, getToken, isAuthenticated } = useAuth();
+  const { user, getToken, isAuthenticated, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const isOwnProfile = !uid || uid === user?.uid;
 
@@ -53,30 +53,48 @@ export default function Profile() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    if (authLoading) return;
+
+    let cancelled = false;
+
     const fetchProfile = async () => {
+      if (!isAuthenticated) {
+        setDeveloper(null);
+        setRepos([]);
+        setLoading(false);
+        return;
+      }
+
       try {
+        setLoading(true);
         const token = await getToken();
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
         const endpoint = isOwnProfile ? `${API}/api/profile` : `${API}/api/profile/${uid}`;
         const res = await axios.get(endpoint, { headers });
-        const dev = isOwnProfile ? res.data.developer : res.data.developer;
+        if (cancelled) return;
+        const dev = res.data.developer;
         setDeveloper(dev);
 
         if (dev?.github_url) {
           const username = dev.github_url.split('/').filter(Boolean).pop();
           try {
             const repoRes = await axios.get(`https://api.github.com/users/${username}/repos?sort=stars&per_page=6`);
-            setRepos(repoRes.data);
+            if (!cancelled) setRepos(repoRes.data);
           } catch { /* silently fail */ }
+        } else {
+          setRepos([]);
         }
       } catch (err) {
         console.error('Failed to fetch profile:', err);
+        if (!cancelled) setDeveloper(null);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
+
     fetchProfile();
-  }, [uid]);
+    return () => { cancelled = true; };
+  }, [uid, authLoading, isAuthenticated, isOwnProfile, user?.uid, getToken]);
 
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);

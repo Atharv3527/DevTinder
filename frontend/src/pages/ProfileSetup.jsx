@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -233,7 +233,7 @@ function EducationForm({ items, onChange }) {
 
 // ─── Main Component ───────────────────────────────────────────────────
 export default function ProfileSetup() {
-  const { user, dbUser, getToken } = useAuth();
+  const { user, dbUser, getToken, refreshDbUser } = useAuth();
   const navigate = useNavigate();
 
   const [step, setStep] = useState(0);
@@ -253,6 +253,26 @@ export default function ProfileSetup() {
   const [skills, setSkills] = useState(dbUser?.skills || []);
   const [experience, setExperience] = useState(dbUser?.experience?.length ? dbUser.experience : [{ role: '', company: '', duration: '', description: '' }]);
   const [education, setEducation] = useState(dbUser?.education?.length ? dbUser.education : [{ degree: '', college_name: '', graduation_year: '', grade: '' }]);
+
+  // When auth sync finishes after mount, hydrate form without wiping user edits
+  useEffect(() => {
+    if (!dbUser) return;
+    setProfileImage((prev) => prev || dbUser.profile_image_url || '');
+    setBgImage((prev) => prev || dbUser.background_image_url || '');
+    setBio((prev) => prev || dbUser.bio || '');
+    setAddress((prev) => prev || dbUser.address || '');
+    setFullName((prev) => prev || dbUser.full_name || user?.displayName || '');
+    setGithubUrl((prev) => prev || dbUser.github_url || '');
+    if (Array.isArray(dbUser.skills) && dbUser.skills.length) {
+      setSkills((prev) => (prev.length ? prev : dbUser.skills));
+    }
+    if (Array.isArray(dbUser.experience) && dbUser.experience.length) {
+      setExperience((prev) => (prev.some((e) => e.role || e.company) ? prev : dbUser.experience));
+    }
+    if (Array.isArray(dbUser.education) && dbUser.education.length) {
+      setEducation((prev) => (prev.some((e) => e.degree || e.college_name) ? prev : dbUser.education));
+    }
+  }, [dbUser, user?.displayName]);
 
   const showToast = (msg, type = 'info') => {
     setToast(msg);
@@ -306,6 +326,7 @@ export default function ProfileSetup() {
 
       if (!res.data.success) throw new Error('Save failed');
 
+      await refreshDbUser();
       showToast('Profile saved! 🎉', 'success');
       setTimeout(() => navigate('/profile'), 1200);
     } catch (err) {
@@ -316,35 +337,46 @@ export default function ProfileSetup() {
   };
 
   const handleSkip = async () => {
-    // Save whatever data has been entered so far before navigating away
+    setSaving(true);
     try {
       const token = await getToken();
-      if (token) {
-        const payload = {
-          full_name: fullName || undefined,
-          bio: bio || undefined,
-          address: address || undefined,
-          github_url: githubUrl || undefined,
-          profile_image_url: profileImage || undefined,
-          background_image_url: bgImage || undefined,
-          skills: skills.length ? skills : undefined,
-          experience: experience.filter(e => e.role && e.company).length
-            ? experience.filter(e => e.role && e.company)
-            : undefined,
-          education: education.filter(e => e.degree && e.college_name).length
-            ? education.filter(e => e.degree && e.college_name)
-            : undefined,
-        };
-        // Remove undefined keys
-        Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
-        if (Object.keys(payload).length > 0) {
-          await axios.post(`${API}/api/profile`, payload, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-        }
+      if (!token) {
+        navigate('/profile');
+        return;
       }
+      const payload = {
+        full_name: fullName || user?.displayName || undefined,
+        bio: bio || undefined,
+        address: address || undefined,
+        github_url: githubUrl || undefined,
+        profile_image_url: profileImage || undefined,
+        background_image_url: bgImage || undefined,
+        skills: skills.length ? skills : undefined,
+        experience: experience.filter(
+          (e) => e.role && e.company
+        ).length
+          ? experience.filter((e) => e.role && e.company)
+          : undefined,
+        education: education.filter(
+          (e) => e.degree && e.college_name
+        ).length
+          ? education.filter((e) => e.degree && e.college_name)
+          : undefined,
+      };
+      Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
+      // Always persist (even {}) so backend upserts firebase_uid + email + updated_at
+      await axios.post(`${API}/api/profile`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      await refreshDbUser();
     } catch (err) {
       console.error('Skip save error:', err);
+      showToast(
+        'Could not save your progress: ' + (err.response?.data?.error || err.message),
+        'error'
+      );
+    } finally {
+      setSaving(false);
     }
     navigate('/profile');
   };

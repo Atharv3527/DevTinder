@@ -1,4 +1,5 @@
 import express from "express";
+import admin from "../config/firebaseAdmin.js";
 import { userAuth } from "../middlewares/auth.js";
 import { supabase } from "../config/supabase.js";
 import multer from "multer";
@@ -37,6 +38,7 @@ profileRouter.post("/upload-image", userAuth, upload.single("file"), async (req,
       .upload(path, req.file.buffer, {
         contentType: req.file.mimetype,
         upsert: true,
+        metadata: { owner: req.user.uid },
       });
 
     if (error) throw error;
@@ -69,7 +71,20 @@ profileRouter.get("/", userAuth, async (req, res) => {
   }
 });
 
-// POST /api/profile — save profile
+async function resolveDeveloperEmail(uid, tokenEmail) {
+  let email = tokenEmail || null;
+  if (!email && admin.apps?.length) {
+    try {
+      const record = await admin.auth().getUser(uid);
+      email = record.email || null;
+    } catch (e) {
+      console.warn("resolveDeveloperEmail getUser failed:", e?.message);
+    }
+  }
+  return email;
+}
+
+// POST /api/profile — save profile (upsert; supports partial fields)
 profileRouter.post("/", userAuth, async (req, res) => {
   try {
     const { uid } = req.user;
@@ -85,8 +100,23 @@ profileRouter.post("/", userAuth, async (req, res) => {
       education,
     } = req.body;
 
+    const { data: existing } = await supabase
+      .from("developers")
+      .select("email")
+      .eq("firebase_uid", uid)
+      .maybeSingle();
+
+    const tokenEmail = await resolveDeveloperEmail(uid, req.user.email);
+    const email = existing?.email || tokenEmail;
+    if (!email) {
+      return res.status(400).json({
+        error: "No email on Firebase user; cannot create or update profile row.",
+      });
+    }
+
     const updatePayload = {
       firebase_uid: uid,
+      email,
       updated_at: new Date().toISOString(),
     };
 

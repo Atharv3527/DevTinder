@@ -91,3 +91,5 @@ CREATE INDEX idx_notifications_created  ON public.notifications(created_at);
 --   • background-images (Public)
 --
 -- Backend uses Service Role Key so RLS is bypassed server-side.
+-- For browser-direct Supabase access or stricter production DB rules, run
+-- `supabase-rls-storage.sql` after this script (Firebase JWT `sub` = firebase_uid).

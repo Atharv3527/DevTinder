@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Requires the Service Role Key for backend administration (bypassing RLS)
+// Requires the Service Role Key for backend administration (bypassing RLS).
+// Without it, PostgREST applies RLS with the anon key and you may see
+// "new row violates row-level security policy" on insert/update.
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
