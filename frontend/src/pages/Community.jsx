@@ -1,11 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ThumbsUp, MessageCircle, Share2, Users, Loader2, Code2 } from 'lucide-react';
+import {
+  ThumbsUp, MessageCircle, Share2, Users, Loader2, Code2,
+  ChevronDown, ChevronUp, Sparkles,
+} from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
 const API = import.meta.env.VITE_API_URL || 'https://devtinder-1-euv2.onrender.com';
+
+// Visible connections per row (grid-cols-4 → 4 | sm:grid-cols-6 → 6)
+const INITIAL_VISIBLE = 8; // 2 rows × 4 columns (conservative)
 
 // One curated sample post shown as community starter
 const SAMPLE_POST = {
@@ -32,11 +38,11 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } },
 };
 
+/* ─── Avatar ─────────────────────────────────────────────────────────────── */
 function Avatar({ dev, size = 'md' }) {
   const name = dev?.full_name || 'Dev';
   const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   const cls = size === 'sm' ? 'w-8 h-8 text-xs' : 'w-10 h-10 text-sm';
-
   return (
     <div className={`${cls} rounded-full overflow-hidden border border-border bg-zinc-800 flex items-center justify-center font-bold text-primary flex-shrink-0`}>
       {dev?.profile_image_url
@@ -47,6 +53,7 @@ function Avatar({ dev, size = 'md' }) {
   );
 }
 
+/* ─── Post Card ──────────────────────────────────────────────────────────── */
 function PostCard({ post, currentUser, currentDev }) {
   const [liked, setLiked] = useState(post.isLiked);
   const [likeCount, setLikeCount] = useState(post.likes);
@@ -65,8 +72,10 @@ function PostCard({ post, currentUser, currentDev }) {
   const time = post.createdAt || new Date(post.created_at || Date.now()).toLocaleDateString();
 
   return (
-    <motion.div variants={itemVariants}
-      className="bg-surface border border-border rounded-2xl p-5 shadow-sm hover:border-border/80 transition-colors">
+    <motion.div
+      variants={itemVariants}
+      className="bg-surface border border-border rounded-2xl p-5 shadow-sm hover:border-border/80 transition-colors"
+    >
       {/* Post Header */}
       <div className="flex items-start gap-3 mb-4">
         <button onClick={() => !isOwn && dev?.firebase_uid && navigate(`/profile/${dev.firebase_uid}`)}>
@@ -75,7 +84,8 @@ function PostCard({ post, currentUser, currentDev }) {
         <div className="flex-1 min-w-0">
           <button
             onClick={() => !isOwn && dev?.firebase_uid && navigate(`/profile/${dev.firebase_uid}`)}
-            className="font-bold text-text-primary text-sm hover:text-primary transition-colors">
+            className="font-bold text-text-primary text-sm hover:text-primary transition-colors"
+          >
             {name}
           </button>
           {dev?.bio && <p className="text-xs text-text-secondary truncate">{dev.bio.slice(0, 60)}</p>}
@@ -126,9 +136,12 @@ function PostCard({ post, currentUser, currentDev }) {
             exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
             <div className="mt-4 pt-4 border-t border-border flex gap-2">
               <Avatar dev={currentDev} size="sm" />
-              <input value={comment} onChange={e => setComment(e.target.value)}
+              <input
+                value={comment}
+                onChange={e => setComment(e.target.value)}
                 placeholder="Write a comment..."
-                className="flex-1 bg-background border border-border rounded-full px-4 py-1.5 text-sm outline-none focus:border-primary transition-colors text-text-primary" />
+                className="flex-1 bg-background border border-border rounded-full px-4 py-1.5 text-sm outline-none focus:border-primary transition-colors text-text-primary"
+              />
             </div>
           </motion.div>
         )}
@@ -137,29 +150,42 @@ function PostCard({ post, currentUser, currentDev }) {
   );
 }
 
-function ConnectionMember({ conn, onClick }) {
+/* ─── Connection Member Card ─────────────────────────────────────────────── */
+function ConnectionMember({ conn, onClick, index }) {
   const dev = conn.partner;
   const name = dev?.full_name || 'Developer';
   const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   return (
-    <motion.button whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.97 }}
+    <motion.button
+      initial={{ opacity: 0, scale: 0.85, y: 10 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ type: 'spring', stiffness: 320, damping: 22, delay: index * 0.04 }}
+      whileHover={{ scale: 1.06, y: -3 }}
+      whileTap={{ scale: 0.96 }}
       onClick={onClick}
-      className="flex flex-col items-center gap-2 p-3 bg-background border border-border rounded-2xl hover:border-primary/40 transition-all text-center group w-full">
-      <div className="w-12 h-12 rounded-full overflow-hidden border border-border bg-zinc-800 flex items-center justify-center font-bold text-primary text-sm">
+      className="flex flex-col items-center gap-2 p-3 bg-background border border-border rounded-2xl hover:border-primary/40 hover:bg-primary/5 transition-all text-center group w-full"
+    >
+      <div className="w-12 h-12 rounded-full overflow-hidden border border-border bg-zinc-800 flex items-center justify-center font-bold text-primary text-sm relative">
         {dev?.profile_image_url
           ? <img src={dev.profile_image_url} alt={name} className="w-full h-full object-cover" />
           : initials
         }
+        <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/10 rounded-full transition-colors" />
       </div>
       <div className="min-w-0 w-full">
-        <p className="font-semibold text-text-primary text-xs truncate group-hover:text-primary transition-colors">{name.split(' ')[0]}</p>
-        <p className="text-xs text-text-secondary truncate">{dev?.bio?.slice(0, 20) || 'Developer'}…</p>
+        <p className="font-semibold text-text-primary text-xs truncate group-hover:text-primary transition-colors">
+          {name.split(' ')[0]}
+        </p>
+        <p className="text-xs text-text-secondary truncate">
+          {dev?.bio?.slice(0, 20) || 'Developer'}…
+        </p>
       </div>
     </motion.button>
   );
 }
 
+/* ─── Community Page ─────────────────────────────────────────────────────── */
 export default function Community() {
   const { getToken, isAuthenticated, user, dbUser } = useAuth();
   const navigate = useNavigate();
@@ -168,6 +194,7 @@ export default function Community() {
   const [newPost, setNewPost] = useState('');
   const [focused, setFocused] = useState(false);
   const [posts, setPosts] = useState([SAMPLE_POST]);
+  const [showAllConnections, setShowAllConnections] = useState(false);
 
   useEffect(() => {
     const fetchMyCommunity = async () => {
@@ -192,7 +219,11 @@ export default function Community() {
       id: Date.now(),
       content: newPost,
       likes: 0, comments: 0, isLiked: false, createdAt: 'Just now',
-      user: { full_name: dbUser?.full_name || user?.displayName || 'You', profile_image_url: dbUser?.profile_image_url, bio: dbUser?.bio || '' },
+      user: {
+        full_name: dbUser?.full_name || user?.displayName || 'You',
+        profile_image_url: dbUser?.profile_image_url,
+        bio: dbUser?.bio || '',
+      },
     };
     setPosts([p, ...posts]);
     setNewPost('');
@@ -203,52 +234,113 @@ export default function Community() {
   const displayName = dbUser?.full_name || user?.displayName || 'You';
   const userInitials = displayName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
-  return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible"
-      className="max-w-2xl mx-auto space-y-5 pb-12 w-full pt-4 relative z-10">
+  // Slice connections based on toggle
+  const visibleConnections = showAllConnections
+    ? connections
+    : connections.slice(0, INITIAL_VISIBLE);
+  const hiddenCount = connections.length - INITIAL_VISIBLE;
 
-      {/* Community Members Panel */}
+  return (
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="max-w-2xl mx-auto space-y-5 pb-12 w-full pt-4 relative z-10"
+    >
+      {/* ── Community Members Panel ── */}
       {isAuthenticated && (
         <motion.div variants={itemVariants} className="bg-surface border border-border rounded-2xl p-4 shadow-sm">
-          <div className="flex items-center gap-2 mb-3">
-            <Users className="w-4 h-4 text-primary" />
-            <h2 className="font-bold text-text-primary text-sm">
-              Your Network
-              {connections.length > 0 && (
-                <span className="ml-2 text-xs bg-primary/10 border border-primary/20 text-primary px-2 py-0.5 rounded-full">
-                  {connections.length}
-                </span>
-              )}
-            </h2>
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-primary" />
+              <h2 className="font-bold text-text-primary text-sm flex items-center gap-2">
+                Your Network
+                {connections.length > 0 && (
+                  <motion.span
+                    key={connections.length}
+                    initial={{ scale: 1.4, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                    className="text-xs bg-primary/10 border border-primary/20 text-primary px-2 py-0.5 rounded-full"
+                  >
+                    {connections.length}
+                  </motion.span>
+                )}
+              </h2>
+            </div>
+            {connections.length > 0 && (
+              <span className="text-xs text-text-secondary">
+                {connections.length} {connections.length === 1 ? 'connection' : 'connections'}
+              </span>
+            )}
           </div>
 
           {loading ? (
-            <div className="flex justify-center py-3"><Loader2 className="w-5 h-5 text-primary animate-spin" /></div>
+            <div className="flex justify-center py-3">
+              <Loader2 className="w-5 h-5 text-primary animate-spin" />
+            </div>
           ) : connections.length === 0 ? (
             <div className="text-center py-3">
               <p className="text-text-secondary text-xs">No connections yet.</p>
-              <button onClick={() => navigate('/feed')} className="text-xs text-primary hover:underline mt-1">
+              <button
+                onClick={() => navigate('/feed')}
+                className="text-xs text-primary hover:underline mt-1"
+              >
                 Discover developers →
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-              {connections.map(conn => (
-                <ConnectionMember
-                  key={conn.connectionId}
-                  conn={conn}
-                  onClick={() => navigate(`/profile/${conn.partner.firebase_uid}`)}
-                />
-              ))}
-            </div>
+            <>
+              <motion.div
+                layout
+                className="grid grid-cols-4 sm:grid-cols-6 gap-2"
+              >
+                <AnimatePresence>
+                  {visibleConnections.map((conn, i) => (
+                    <ConnectionMember
+                      key={conn.connectionId}
+                      conn={conn}
+                      index={i}
+                      onClick={() => navigate(`/profile/${conn.partner.firebase_uid}`)}
+                    />
+                  ))}
+                </AnimatePresence>
+              </motion.div>
+
+              {/* See More / See Less button */}
+              {connections.length > INITIAL_VISIBLE && (
+                <motion.button
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setShowAllConnections(v => !v)}
+                  className="mt-3 w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-border text-xs font-semibold text-text-secondary hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-all"
+                >
+                  {showAllConnections ? (
+                    <>
+                      <ChevronUp className="w-3.5 h-3.5" />
+                      Show less
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="w-3.5 h-3.5" />
+                      See {hiddenCount} more {hiddenCount === 1 ? 'connection' : 'connections'}
+                    </>
+                  )}
+                </motion.button>
+              )}
+            </>
           )}
         </motion.div>
       )}
 
-      {/* Create Post */}
+      {/* ── Create Post ── */}
       {isAuthenticated && (
-        <motion.div variants={itemVariants}
-          className="bg-surface border border-border rounded-2xl p-4 shadow-sm focus-within:border-primary/40 transition-colors">
+        <motion.div
+          variants={itemVariants}
+          className="bg-surface border border-border rounded-2xl p-4 shadow-sm focus-within:border-primary/40 transition-colors"
+        >
           <div className="flex gap-3">
             <div className="w-10 h-10 rounded-full overflow-hidden border border-border bg-zinc-800 flex items-center justify-center font-bold text-primary text-sm flex-shrink-0">
               {user?.photoURL
@@ -268,17 +360,28 @@ export default function Community() {
               />
               <AnimatePresence>
                 {(focused || newPost) && (
-                  <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }}
-                    className="flex justify-end items-center pt-3 border-t border-border mt-2">
+                  <motion.div
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="flex justify-end items-center pt-3 border-t border-border mt-2"
+                  >
                     <div className="flex gap-2">
-                      <motion.button type="button" whileTap={{ scale: 0.96 }}
+                      <motion.button
+                        type="button"
+                        whileTap={{ scale: 0.96 }}
                         onClick={() => { setNewPost(''); setFocused(false); }}
-                        className="px-4 py-1.5 rounded-full text-sm font-medium text-text-secondary border border-border hover:border-primary/30 transition-colors">
+                        className="px-4 py-1.5 rounded-full text-sm font-medium text-text-secondary border border-border hover:border-primary/30 transition-colors"
+                      >
                         Cancel
                       </motion.button>
-                      <motion.button type="submit" whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
+                      <motion.button
+                        type="submit"
+                        whileHover={{ scale: 1.04 }}
+                        whileTap={{ scale: 0.96 }}
                         disabled={!newPost.trim()}
-                        className="px-5 py-1.5 rounded-full text-sm font-bold bg-primary text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-hover transition-colors shadow-sm shadow-primary/20">
+                        className="px-5 py-1.5 rounded-full text-sm font-bold bg-primary text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-hover transition-colors shadow-sm shadow-primary/20"
+                      >
                         Post
                       </motion.button>
                     </div>
@@ -290,7 +393,7 @@ export default function Community() {
         </motion.div>
       )}
 
-      {/* Posts Feed */}
+      {/* ── Posts Feed ── */}
       <AnimatePresence>
         {posts.map(post => (
           <PostCard key={post.id} post={post} currentUser={user} currentDev={currentDev} />
@@ -298,8 +401,10 @@ export default function Community() {
       </AnimatePresence>
 
       {!isAuthenticated && (
-        <motion.div variants={itemVariants}
-          className="flex flex-col items-center justify-center gap-4 py-10 text-center bg-surface/40 border border-border rounded-2xl">
+        <motion.div
+          variants={itemVariants}
+          className="flex flex-col items-center justify-center gap-4 py-10 text-center bg-surface/40 border border-border rounded-2xl"
+        >
           <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center border border-primary/20">
             <Code2 className="w-6 h-6 text-primary" />
           </div>
@@ -307,8 +412,10 @@ export default function Community() {
             <h3 className="font-bold text-text-primary">Sign in to see your community</h3>
             <p className="text-text-secondary text-sm mt-1">Connect with developers and see their updates here.</p>
           </div>
-          <button onClick={() => navigate('/login')}
-            className="px-5 py-2 bg-primary text-white rounded-full font-semibold text-sm hover:bg-primary-hover transition-colors shadow-md shadow-primary/20">
+          <button
+            onClick={() => navigate('/login')}
+            className="px-5 py-2 bg-primary text-white rounded-full font-semibold text-sm hover:bg-primary-hover transition-colors shadow-md shadow-primary/20"
+          >
             Sign In
           </button>
         </motion.div>
