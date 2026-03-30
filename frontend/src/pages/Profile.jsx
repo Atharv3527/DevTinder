@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
   Github, MapPin, Code2, Briefcase, GraduationCap,
-  Edit3, ExternalLink, Loader2, Star, Share2, ArrowLeft
+  Edit3, ExternalLink, Loader2, Star, Share2, ArrowLeft, Check
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';

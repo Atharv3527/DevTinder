@@ -1,21 +1,15 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Upload, Github, MapPin, User, Code, Briefcase, GraduationCap,
   Plus, X, ChevronRight, ChevronLeft, Check, Loader2, ExternalLink,
-  Star, Link as LinkIcon, Image
+  Star, Image
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { createClient } from '@supabase/supabase-js';
 
 const API = import.meta.env.VITE_API_URL || 'https://devtinder-1-euv2.onrender.com';
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
 
 const STEPS = [
   { id: 0, label: 'Photos', icon: Image },
@@ -33,7 +27,7 @@ const slideVariants = {
 };
 
 // ─── Image Upload Component ───────────────────────────────────────────
-function ImageField({ label, bucket, value, onChange }) {
+function ImageField({ label, bucket, value, onChange, getToken }) {
   const [uploading, setUploading] = useState(false);
   const [mode, setMode] = useState('upload'); // 'upload' | 'url'
   const [urlInput, setUrlInput] = useState('');
@@ -49,12 +43,19 @@ function ImageField({ label, bucket, value, onChange }) {
     if (file.size > 5 * 1024 * 1024) { alert('Max file size is 5MB.'); return; }
     setUploading(true);
     try {
-      const ext = file.name.split('.').pop();
-      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { data, error } = await supabase.storage.from(bucket).upload(path, file, { upsert: true });
-      if (error) throw error;
-      const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(data.path);
-      onChange(urlData.publicUrl);
+      const token = await getToken();
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('bucket', bucket);
+
+      const res = await fetch(`${API}/api/profile/upload-image`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const json = await res.json();
+      if (!res.ok || !json.url) throw new Error(json.error || 'Upload failed');
+      onChange(json.url);
     } catch (err) {
       alert('Upload failed: ' + err.message);
     } finally {
@@ -314,11 +315,45 @@ export default function ProfileSetup() {
     }
   };
 
+  const handleSkip = async () => {
+    // Save whatever data has been entered so far before navigating away
+    try {
+      const token = await getToken();
+      if (token) {
+        const payload = {
+          full_name: fullName || undefined,
+          bio: bio || undefined,
+          address: address || undefined,
+          github_url: githubUrl || undefined,
+          profile_image_url: profileImage || undefined,
+          background_image_url: bgImage || undefined,
+          skills: skills.length ? skills : undefined,
+          experience: experience.filter(e => e.role && e.company).length
+            ? experience.filter(e => e.role && e.company)
+            : undefined,
+          education: education.filter(e => e.degree && e.college_name).length
+            ? education.filter(e => e.degree && e.college_name)
+            : undefined,
+        };
+        // Remove undefined keys
+        Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
+        if (Object.keys(payload).length > 0) {
+          await axios.post(`${API}/api/profile`, payload, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Skip save error:', err);
+    }
+    navigate('/profile');
+  };
+
   const stepContent = [
     // Step 0: Photos
     <div className="space-y-5">
-      <ImageField label="Profile Photo" bucket="profile-images" value={profileImage} onChange={setProfileImage} />
-      <ImageField label="Background / Banner" bucket="background-images" value={bgImage} onChange={setBgImage} />
+      <ImageField label="Profile Photo" bucket="profile-images" value={profileImage} onChange={setProfileImage} getToken={getToken} />
+      <ImageField label="Background / Banner" bucket="background-images" value={bgImage} onChange={setBgImage} getToken={getToken} />
     </div>,
 
     // Step 1: About
@@ -463,7 +498,7 @@ export default function ProfileSetup() {
         </div>
 
         <p className="text-center text-xs text-text-secondary mt-4">
-          <button onClick={() => navigate('/profile')} className="hover:text-primary transition-colors underline underline-offset-2">
+          <button onClick={handleSkip} className="hover:text-primary transition-colors underline underline-offset-2">
             Skip for now
           </button>
         </p>

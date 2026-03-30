@@ -1,8 +1,54 @@
 import express from "express";
 import { userAuth } from "../middlewares/auth.js";
 import { supabase } from "../config/supabase.js";
+import multer from "multer";
 
 export const profileRouter = express.Router();
+
+// In-memory storage for multer (no disk writes on Render)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  fileFilter: (_req, file, cb) => {
+    if (["image/jpeg", "image/png", "image/webp"].includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only JPG, PNG, or WebP images are allowed."));
+    }
+  },
+});
+
+// POST /api/profile/upload-image — proxy upload through backend (bypasses Supabase RLS)
+profileRouter.post("/upload-image", userAuth, upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "No file provided." });
+
+    const bucket = req.body.bucket || "profile-images";
+    const allowedBuckets = ["profile-images", "background-images"];
+    if (!allowedBuckets.includes(bucket)) {
+      return res.status(400).json({ error: "Invalid bucket." });
+    }
+
+    const ext = req.file.originalname.split(".").pop() || "jpg";
+    const path = `${req.user.uid}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .upload(path, req.file.buffer, {
+        contentType: req.file.mimetype,
+        upsert: true,
+      });
+
+    if (error) throw error;
+
+    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(data.path);
+
+    res.json({ success: true, url: urlData.publicUrl });
+  } catch (err) {
+    console.error("Image upload error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // GET /api/profile — own profile
 profileRouter.get("/", userAuth, async (req, res) => {
