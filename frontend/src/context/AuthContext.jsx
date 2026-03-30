@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import axios from 'axios';
@@ -57,13 +57,13 @@ export function AuthProvider({ children }) {
     return () => unsubscribe();
   }, []);
 
-  const getToken = async () => {
+  const getToken = useCallback(async () => {
     if (!user) return null;
     return user.getIdToken();
-  };
+  }, [user]);
 
   /** Refetch developers row after profile save/skip so Navbar and setup stay in sync. */
-  const refreshDbUser = async () => {
+  const refreshDbUser = useCallback(async () => {
     if (!user) return;
     try {
       const token = await user.getIdToken(true);
@@ -74,7 +74,7 @@ export function AuthProvider({ children }) {
     } catch (err) {
       console.error("refreshDbUser failed:", err.response?.data || err.message);
     }
-  };
+  }, [user]);
 
   const logout = async () => {
     await signOut(auth);

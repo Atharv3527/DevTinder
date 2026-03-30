@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Check, X, Clock, Loader2, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useConnections } from '../context/ConnectionContext';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -21,39 +22,30 @@ function timeAgo(iso) {
 }
 
 export default function Notifications() {
-  const { isAuthenticated, getToken } = useAuth();
+  const { isAuthenticated, getToken, loading: authLoading } = useAuth();
+  const { fetchConnections } = useConnections();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busyIds, setBusyIds] = useState(() => new Set());
   const [error, setError] = useState('');
 
-  if (!isAuthenticated) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-        <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center border border-primary/20 mb-6 shadow-lg shadow-primary/10">
-          <Bell className="w-9 h-9 text-primary" />
-        </div>
-        <h2 className="text-2xl font-bold text-white mb-2">Sign in to see notifications</h2>
-        <p className="text-zinc-400 mb-6 max-w-xs">You need to be logged in to view your connection notifications.</p>
-        <Link
-          to="/login"
-          className="px-6 py-2.5 bg-primary text-white rounded-full font-semibold hover:bg-primary/90 transition-all shadow-md shadow-primary/20"
-        >
-          Go to Login
-        </Link>
-      </div>
-    );
-  }
-
   useEffect(() => {
     let active = true;
 
     const fetchNotifications = async () => {
+      if (authLoading || !isAuthenticated) {
+        if (active) setLoading(false);
+        return;
+      }
       setLoading(true);
       setError('');
       try {
         const token = await getToken();
+        if (!token) {
+          if (active) setLoading(false);
+          return;
+        }
         const res = await axios.get(`${API}/api/notifications`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -70,15 +62,17 @@ export default function Notifications() {
 
     fetchNotifications();
     return () => { active = false; };
-  }, [getToken]);
+  }, [authLoading, isAuthenticated, getToken]);
 
   // Mark unread as read after 3 seconds on page
   useEffect(() => {
+    if (authLoading || !isAuthenticated) return;
     const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
     if (unreadIds.length > 0) {
       const timer = setTimeout(async () => {
         try {
           const token = await getToken();
+          if (!token) return;
           await axios.post(`${API}/api/notifications/mark-read`, { notificationIds: unreadIds }, {
             headers: { Authorization: `Bearer ${token}` },
           });
@@ -89,7 +83,7 @@ export default function Notifications() {
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [notifications, getToken]);
+  }, [notifications, getToken, authLoading, isAuthenticated]);
 
   const newCount = notifications.filter(n => !n.is_read).length;
 
@@ -102,16 +96,35 @@ export default function Notifications() {
     });
   };
 
+  const refetchNotifications = async () => {
+    try {
+      const token = await getToken();
+      if (!token) return;
+      const res = await axios.get(`${API}/api/notifications`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setNotifications(res.data.notifications || []);
+    } catch (e) {
+      console.error('Refetch notifications failed:', e);
+    }
+  };
+
   const acceptRequest = async (connectionId, notificationId) => {
+    if (!connectionId) {
+      setError('Missing connection id. Try refreshing the page.');
+      return;
+    }
     setBusy(notificationId, true);
     setError('');
     try {
       const token = await getToken();
-      await axios.post(`${API}/api/connections/respond`, { connection_id: connectionId, action: 'accepted' }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      // Mark local state as accepted
-      setNotifications((prev) => prev.map((n) => n.id === notificationId ? { ...n, is_read: true, answered: true } : n));
+      await axios.post(
+        `${API}/api/connections/respond`,
+        { connection_id: connectionId, action: 'accepted' },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      await fetchConnections();
+      await refetchNotifications();
     } catch (e) {
       console.error('Accept request error:', e);
       setError(e?.response?.data?.error || e.message || 'Failed to accept request');
@@ -121,15 +134,21 @@ export default function Notifications() {
   };
 
   const rejectRequest = async (connectionId, notificationId) => {
+    if (!connectionId) {
+      setError('Missing connection id. Try refreshing the page.');
+      return;
+    }
     setBusy(notificationId, true);
     setError('');
     try {
       const token = await getToken();
-      await axios.post(`${API}/api/connections/respond`, { connection_id: connectionId, action: 'rejected' }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      // Mark local state as rejected
-      setNotifications((prev) => prev.map((n) => n.id === notificationId ? { ...n, is_read: true, answered: true } : n));
+      await axios.post(
+        `${API}/api/connections/respond`,
+        { connection_id: connectionId, action: 'rejected' },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      await fetchConnections();
+      await refetchNotifications();
     } catch (e) {
       console.error('Reject request error:', e);
       setError(e?.response?.data?.error || e.message || 'Failed to decline request');
@@ -170,6 +189,32 @@ export default function Notifications() {
     });
     return { newNotifs, oldNotifs };
   }, [notifications]);
+
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh]">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+        <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center border border-primary/20 mb-6 shadow-lg shadow-primary/10">
+          <Bell className="w-9 h-9 text-primary" />
+        </div>
+        <h2 className="text-2xl font-bold text-white mb-2">Sign in to see notifications</h2>
+        <p className="text-zinc-400 mb-6 max-w-xs">You need to be logged in to view your connection notifications.</p>
+        <Link
+          to="/login"
+          className="px-6 py-2.5 bg-primary text-white rounded-full font-semibold hover:bg-primary/90 transition-all shadow-md shadow-primary/20"
+        >
+          Go to Login
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-2xl mx-auto px-4 py-8">
@@ -346,7 +391,7 @@ function NotificationCard({ c, isBusy, acceptRequest, rejectRequest, deleteNotif
             <motion.button
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.96 }}
-              onClick={() => acceptRequest(c.connection_id, c.id)}
+              onClick={() => acceptRequest(c.connection_id ?? c.connectionId, c.id)}
               disabled={isBusy}
               className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 rounded-full text-xs font-semibold hover:bg-emerald-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -356,7 +401,7 @@ function NotificationCard({ c, isBusy, acceptRequest, rejectRequest, deleteNotif
             <motion.button
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.96 }}
-              onClick={() => rejectRequest(c.connection_id, c.id)}
+              onClick={() => rejectRequest(c.connection_id ?? c.connectionId, c.id)}
               disabled={isBusy}
               className="flex items-center gap-1.5 px-4 py-1.5 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full text-xs font-semibold hover:bg-red-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >

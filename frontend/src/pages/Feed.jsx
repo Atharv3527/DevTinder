@@ -103,18 +103,21 @@ export default function Feed() {
 
   const handleAction = async (userId, type) => {
     setCards(prev => prev.map(c => c.firebase_uid === userId ? { ...c, action: type } : c));
-    showToast(type === 'accept' ? 'Connection request sent 🚀' : 'Profile skipped');
+    showToast(type === 'accept' ? 'Connection request sent 🚀' : 'Skipped');
     setTimeout(() => setCards(prev => prev.filter(c => c.firebase_uid !== userId)), 420);
 
-    if (isAuthenticated) {
+    // Only "accept" calls the API (send request). "Skip" is local-only — it must NOT call
+    // /api/request/reject/:id because that route expects a connection UUID, not a Firebase uid.
+    if (type === 'accept' && isAuthenticated) {
       try {
         const token = await getToken();
-        const ep = type === 'accept' ? 'request/send' : 'request/reject';
-        await axios.post(`${API}/api/${ep}/${userId}`, {}, {
+        await axios.post(`${API}/api/request/send/${userId}`, {}, {
           headers: { Authorization: `Bearer ${token}` },
         });
       } catch (err) {
-        console.error('Action failed:', err);
+        console.error('Connect failed:', err);
+        const msg = err.response?.data?.error || err.message || 'Failed to send request';
+        showToast(msg);
       }
     }
   };

@@ -197,7 +197,13 @@ connectionsRouter.get("/pending", userAuth, async (req, res) => {
 connectionsRouter.post("/respond", userAuth, async (req, res) => {
   try {
     const uid = req.user.uid;
-    const { connection_id, action } = req.body;
+    const connectionId =
+      req.body?.connection_id ?? req.body?.connectionId ?? req.body?.connectionID;
+    const { action } = req.body;
+
+    if (!connectionId || String(connectionId).trim() === "") {
+      return res.status(400).json({ error: "connection_id is required" });
+    }
 
     if (!["accepted", "rejected"].includes(action)) {
       return res.status(400).json({ error: "Invalid action" });
@@ -206,7 +212,7 @@ connectionsRouter.post("/respond", userAuth, async (req, res) => {
     const { data: connData, error } = await supabase
       .from("connections")
       .update({ status: action })
-      .eq("id", connection_id)
+      .eq("id", String(connectionId).trim())
       .eq("receiver_id", uid) // only receiver can respond
       .select()
       .single();
@@ -215,27 +221,30 @@ connectionsRouter.post("/respond", userAuth, async (req, res) => {
     if (!connData) return res.status(404).json({ error: "Connection not found or unauthorized" });
 
     // Ensure the sender gets a notification
-    await supabase.from("notifications").insert({
+    const { error: notifErr } = await supabase.from("notifications").insert({
       user_id: connData.sender_id,
       actor_id: uid,
       type: action,
-      connection_id: connection_id
+      connection_id: String(connectionId).trim(),
     });
+    if (notifErr) throw notifErr;
 
     // Mark the original connection_request notification as read for the receiver
-    await supabase.from("notifications")
+    await supabase
+      .from("notifications")
       .update({ is_read: true })
       .eq("user_id", uid)
-      .eq("connection_id", connection_id)
+      .eq("connection_id", String(connectionId).trim())
       .eq("type", "connection_request");
 
-    // Start a chat if accepted
+    // Optional welcome message — must not fail the whole accept if chat insert fails
     if (action === "accepted") {
-      await supabase.from("chats").insert({
-        sender_id: uid, 
+      const { error: chatErr } = await supabase.from("chats").insert({
+        sender_id: uid,
         receiver_id: connData.sender_id,
-        message: "Connection accepted! 👋 Let's build something great."
+        message: "Connection accepted! 👋 Let's build something great.",
       });
+      if (chatErr) console.error("connections/respond: chat insert failed:", chatErr.message);
     }
 
     res.json({ message: `Connection ${action}`, data: connData });
