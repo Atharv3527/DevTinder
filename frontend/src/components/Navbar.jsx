@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Flame, Menu, X, Home, Users, MessageCircle, Briefcase, User, LogOut, LogIn, Newspaper, Bell } from 'lucide-react';
+import { Flame, Menu, X, Home, Users, MessageCircle, Briefcase, User, LogOut, LogIn, Newspaper, Bell, Share2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const baseNavItems = [
@@ -21,6 +21,7 @@ export default function Navbar() {
   const navItems = [...baseNavItems];
   if (isAuthenticated) {
     navItems.push({ name: 'Chat', path: '/chat', icon: MessageCircle });
+    navItems.push({ name: 'Network', path: '/network', icon: Share2 });
     navItems.push({ name: 'Notifications', path: '/notifications', icon: Bell, badge: 3 });
     navItems.push({ name: 'Profile', path: '/profile', icon: User });
   }

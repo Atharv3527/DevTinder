@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { useConnections } from '../context/ConnectionContext';
+import { supabase } from '../config/supabase';
 
 const API = import.meta.env.VITE_API_URL || 'https://devtinder-1-euv2.onrender.com';
 
@@ -44,6 +46,7 @@ function SkeletonProfile() {
 export default function Profile() {
   const { uid } = useParams();                  // present when viewing someone else
   const { user, getToken, isAuthenticated, loading: authLoading } = useAuth();
+  const { connections } = useConnections();
   const navigate = useNavigate();
   const isOwnProfile = !uid || uid === user?.uid;
 
@@ -51,6 +54,74 @@ export default function Profile() {
   const [repos, setRepos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [requestStatus, setRequestStatus] = useState('none'); // 'none', 'pending', 'connected'
+  const [totalConnections, setTotalConnections] = useState(null);
+
+  const profileUid = useMemo(() => {
+    if (isOwnProfile) return user?.uid;
+    return uid;
+  }, [isOwnProfile, user?.uid, uid]);
+
+  const fetchConnectionCount = useCallback(async () => {
+    if (!profileUid || !isAuthenticated) return;
+    try {
+      const token = await getToken();
+      if (!token) return;
+      const res = await axios.get(`${API}/api/connections/count`, {
+        params: { userId: profileUid },
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setTotalConnections(res.data.totalConnections ?? 0);
+    } catch (e) {
+      console.error('Connection count failed:', e);
+      setTotalConnections(0);
+    }
+  }, [profileUid, isAuthenticated, getToken]);
+
+  useEffect(() => {
+    setTotalConnections(null);
+  }, [profileUid]);
+
+  useEffect(() => {
+    if (!profileUid || !isAuthenticated || authLoading) return;
+    fetchConnectionCount();
+  }, [profileUid, isAuthenticated, authLoading, fetchConnectionCount]);
+
+  useEffect(() => {
+    if (!profileUid || !isAuthenticated) return;
+
+    const chSender = supabase
+      .channel(`conn-count-${profileUid}-sender`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'connections', filter: `sender_id=eq.${profileUid}` },
+        () => { fetchConnectionCount(); }
+      )
+      .subscribe();
+
+    const chReceiver = supabase
+      .channel(`conn-count-${profileUid}-receiver`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'connections', filter: `receiver_id=eq.${profileUid}` },
+        () => { fetchConnectionCount(); }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(chSender);
+      supabase.removeChannel(chReceiver);
+    };
+  }, [profileUid, isAuthenticated, fetchConnectionCount]);
+
+  // Determine if connected
+  useEffect(() => {
+    if (isOwnProfile || !developer || !isAuthenticated) return;
+    const isConn = connections.some(c => c.partner?.firebase_uid === developer.firebase_uid);
+    if (isConn) {
+      setRequestStatus('connected');
+    }
+  }, [connections, developer, isOwnProfile, isAuthenticated]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -100,6 +171,19 @@ export default function Profile() {
     navigator.clipboard.writeText(window.location.href);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleConnect = async () => {
+    if (!isAuthenticated) { navigate('/login'); return; }
+    try {
+      const token = await getToken();
+      await axios.post(`${API}/api/request/send/${developer.firebase_uid}`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setRequestStatus('pending');
+    } catch (err) {
+      console.error('Failed to connect:', err);
+    }
   };
 
   if (loading) return <SkeletonProfile />;
@@ -185,19 +269,37 @@ export default function Profile() {
                 </p>
               )}
             </div>
-            <div className="flex gap-3">
-              {isOwnProfile && (
+            <div className="flex gap-3 mt-4 md:mt-0">
+              {isOwnProfile ? (
                 <Link to="/profile-setup">
                   <motion.span whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
                     className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/30 text-primary px-5 py-2 rounded-2xl font-semibold text-sm hover:bg-primary/20 transition-colors cursor-pointer">
                     <Edit3 className="w-3.5 h-3.5" /> Edit Profile
                   </motion.span>
                 </Link>
+              ) : (
+                <>
+                  {requestStatus === 'connected' ? (
+                    <motion.button onClick={() => navigate('/chat')} whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                      className="inline-flex items-center gap-1.5 bg-background border border-border text-primary px-5 py-2 rounded-2xl font-semibold text-sm hover:border-primary/40 transition-colors">
+                      <Check className="w-4 h-4" /> Connected
+                    </motion.button>
+                  ) : requestStatus === 'pending' ? (
+                    <motion.button disabled className="inline-flex items-center gap-1.5 bg-background border border-border text-text-secondary px-5 py-2 rounded-2xl font-semibold text-sm opacity-60">
+                      Pending
+                    </motion.button>
+                  ) : (
+                    <motion.button onClick={handleConnect} whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                      className="inline-flex items-center gap-1.5 bg-primary text-white px-5 py-2 rounded-2xl font-semibold text-sm hover:bg-primary-hover transition-colors shadow-sm shadow-primary/20">
+                      Connect
+                    </motion.button>
+                  )}
+                </>
               )}
               {developer.github_url && (
                 <a href={developer.github_url} target="_blank" rel="noreferrer">
                   <motion.span whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
-                    className="inline-flex items-center justify-center w-9 h-9 bg-background border border-border rounded-2xl hover:border-primary/40 transition-colors cursor-pointer">
+                    className="inline-flex items-center justify-center w-10 h-10 bg-background border border-border rounded-2xl hover:border-primary/40 transition-colors cursor-pointer">
                     <Github className="w-4 h-4 text-text-secondary" />
                   </motion.span>
                 </a>
@@ -206,7 +308,7 @@ export default function Profile() {
           </div>
 
           {/* Stats */}
-          <div className="mt-6 pt-5 border-t border-border flex gap-8">
+          <div className="mt-6 pt-5 border-t border-border flex flex-wrap gap-8">
             <div>
               <span className="block font-bold text-lg text-text-primary">{skills.length}</span>
               <span className="text-xs text-text-secondary uppercase tracking-wider font-semibold">Skills</span>
@@ -219,6 +321,31 @@ export default function Profile() {
               <span className="block font-bold text-lg text-text-primary">{experience.length}</span>
               <span className="text-xs text-text-secondary uppercase tracking-wider font-semibold">Roles</span>
             </div>
+            {isAuthenticated && profileUid && (
+              isOwnProfile ? (
+                <Link
+                  to="/network"
+                  className="group rounded-xl -m-2 p-2 min-w-[5rem] hover:bg-primary/5 transition-colors"
+                  title="Your network"
+                >
+                  <span className="block font-bold text-lg text-text-primary group-hover:text-primary">
+                    {totalConnections === null ? '—' : totalConnections}
+                  </span>
+                  <span className="text-xs text-text-secondary uppercase tracking-wider font-semibold group-hover:text-primary/80">
+                    {totalConnections === 1 ? 'Connection' : 'Connections'}
+                  </span>
+                </Link>
+              ) : (
+                <div className="min-w-[5rem]">
+                  <span className="block font-bold text-lg text-text-primary">
+                    {totalConnections === null ? '—' : totalConnections}
+                  </span>
+                  <span className="text-xs text-text-secondary uppercase tracking-wider font-semibold">
+                    {totalConnections === 1 ? 'Connection' : 'Connections'}
+                  </span>
+                </div>
+              )
+            )}
           </div>
         </div>
       </motion.div>

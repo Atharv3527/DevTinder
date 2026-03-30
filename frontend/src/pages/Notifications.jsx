@@ -107,7 +107,7 @@ export default function Notifications() {
     setError('');
     try {
       const token = await getToken();
-      await axios.post(`${API}/api/request/accept/${connectionId}`, null, {
+      await axios.post(`${API}/api/connections/respond`, { connection_id: connectionId, action: 'accepted' }, {
         headers: { Authorization: `Bearer ${token}` },
       });
       // Mark local state as accepted
@@ -125,7 +125,7 @@ export default function Notifications() {
     setError('');
     try {
       const token = await getToken();
-      await axios.post(`${API}/api/request/reject/${connectionId}`, null, {
+      await axios.post(`${API}/api/connections/respond`, { connection_id: connectionId, action: 'rejected' }, {
         headers: { Authorization: `Bearer ${token}` },
       });
       // Mark local state as rejected

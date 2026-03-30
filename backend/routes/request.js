@@ -5,6 +5,26 @@ import { supabase } from "../config/supabase.js";
 export const requestRouter = express.Router();
 export const connectionsRouter = express.Router();
 
+// GET /api/connections/count?userId= — accepted connections count (sender or receiver)
+// Defaults to current user when userId is omitted.
+connectionsRouter.get("/count", userAuth, async (req, res) => {
+  try {
+    const targetUid = (req.query.userId && String(req.query.userId).trim()) || req.user.uid;
+
+    const { count, error } = await supabase
+      .from("connections")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "accepted")
+      .or(`sender_id.eq.${targetUid},receiver_id.eq.${targetUid}`);
+
+    if (error) throw error;
+
+    res.json({ totalConnections: count ?? 0 });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/request/send/:toUserId — send connection request
 requestRouter.post("/send/:toUserId", userAuth, async (req, res) => {
   try {
@@ -168,6 +188,57 @@ connectionsRouter.get("/pending", userAuth, async (req, res) => {
     if (error) throw error;
 
     res.json({ requests: data || [] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/connections/respond — respond to a connection request
+connectionsRouter.post("/respond", userAuth, async (req, res) => {
+  try {
+    const uid = req.user.uid;
+    const { connection_id, action } = req.body;
+
+    if (!["accepted", "rejected"].includes(action)) {
+      return res.status(400).json({ error: "Invalid action" });
+    }
+
+    const { data: connData, error } = await supabase
+      .from("connections")
+      .update({ status: action })
+      .eq("id", connection_id)
+      .eq("receiver_id", uid) // only receiver can respond
+      .select()
+      .single();
+
+    if (error) throw error;
+    if (!connData) return res.status(404).json({ error: "Connection not found or unauthorized" });
+
+    // Ensure the sender gets a notification
+    await supabase.from("notifications").insert({
+      user_id: connData.sender_id,
+      actor_id: uid,
+      type: action,
+      connection_id: connection_id
+    });
+
+    // Mark the original connection_request notification as read for the receiver
+    await supabase.from("notifications")
+      .update({ is_read: true })
+      .eq("user_id", uid)
+      .eq("connection_id", connection_id)
+      .eq("type", "connection_request");
+
+    // Start a chat if accepted
+    if (action === "accepted") {
+      await supabase.from("chats").insert({
+        sender_id: uid, 
+        receiver_id: connData.sender_id,
+        message: "Connection accepted! 👋 Let's build something great."
+      });
+    }
+
+    res.json({ message: `Connection ${action}`, data: connData });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { useConnections } from '../context/ConnectionContext';
 
 const API = import.meta.env.VITE_API_URL || 'https://devtinder-1-euv2.onrender.com';
 
@@ -189,28 +190,11 @@ function ConnectionMember({ conn, onClick, index }) {
 export default function Community() {
   const { getToken, isAuthenticated, user, dbUser } = useAuth();
   const navigate = useNavigate();
-  const [connections, setConnections] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { connections, loading } = useConnections();
   const [newPost, setNewPost] = useState('');
   const [focused, setFocused] = useState(false);
   const [posts, setPosts] = useState([SAMPLE_POST]);
   const [showAllConnections, setShowAllConnections] = useState(false);
-
-  useEffect(() => {
-    const fetchMyCommunity = async () => {
-      if (!isAuthenticated) { setLoading(false); return; }
-      try {
-        const token = await getToken();
-        const res = await axios.get(`${API}/api/connections`, { headers: { Authorization: `Bearer ${token}` } });
-        setConnections(res.data.connections || []);
-      } catch (err) {
-        console.error('Community fetch error:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchMyCommunity();
-  }, [isAuthenticated]);
 
   const handlePost = (e) => {
     e.preventDefault();

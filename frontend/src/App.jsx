@@ -13,6 +13,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Notifications from './pages/Notifications';
 import ProfileSetup from './pages/ProfileSetup';
+import Network from './pages/Network';
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -31,6 +32,8 @@ const PublicRoute = ({ children }) => {
   if (isAuthenticated) return <Navigate to="/feed" replace />;
   return children;
 };
+
+import { ConnectionProvider } from './context/ConnectionContext';
 
 function AppRoutes() {
   return (
@@ -78,6 +81,14 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="network"
+          element={
+            <ProtectedRoute>
+              <Network />
+            </ProtectedRoute>
+          }
+        />
         <Route path="login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="signup" element={<PublicRoute><Signup /></PublicRoute>} />
       </Route>
@@ -88,9 +99,11 @@ function AppRoutes() {
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
+      <ConnectionProvider>
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </ConnectionProvider>
     </AuthProvider>
   );
 }
