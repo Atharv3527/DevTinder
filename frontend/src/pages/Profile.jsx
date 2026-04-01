@@ -221,6 +221,7 @@ export default function Profile() {
 
   const displayName = developer.full_name || 'Developer';
   const initials = displayName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  const profilePhoto = developer.profile_image_url || (isOwnProfile ? user?.photoURL : null);
   const skills = Array.isArray(developer.skills) ? developer.skills : [];
   const experience = Array.isArray(developer.experience) ? developer.experience : [];
   const education = Array.isArray(developer.education) ? developer.education : [];
@@ -254,8 +255,8 @@ export default function Profile() {
           {/* Avatar */}
           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 20, delay: 0.1 }}
             className="w-28 h-28 rounded-full -mt-14 border-4 border-surface shadow-lg overflow-hidden bg-zinc-800 flex items-center justify-center text-3xl font-bold text-primary">
-            {developer.profile_image_url
-              ? <img src={developer.profile_image_url} alt={displayName} className="w-full h-full object-cover" loading="lazy" />
+            {profilePhoto
+              ? <img src={profilePhoto} alt={displayName} className="w-full h-full object-cover" loading="lazy" />
               : initials
             }
           </motion.div>

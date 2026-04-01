@@ -1,14 +1,22 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { auth } from '../config/firebase';
-import axios from 'axios';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { auth } from "../config/firebase";
+import axios from "axios";
 
 const AuthContext = createContext();
-const API = import.meta.env.VITE_API_URL || 'https://devtinder-1-euv2.onrender.com';
+const API =
+  import.meta.env.VITE_API_URL || "https://devtinder-1-euv2.onrender.com";
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);          // Firebase user
-  const [dbUser, setDbUser] = useState(null);      // Supabase developers row
+  const [user, setUser] = useState(null); // Firebase user
+  const [dbUser, setDbUser] = useState(null); // Supabase developers row
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   /** Bumps on every auth state change so stale sync responses cannot overwrite state (multi-account / fast switch). */
@@ -28,6 +36,8 @@ export function AuthProvider({ children }) {
 
       setUser(firebaseUser);
       setIsAuthenticated(true);
+      // Unblock route rendering immediately; profile sync can finish in background.
+      setLoading(false);
 
       try {
         // Force a fresh ID token after account switch so backend always sees the current user.
@@ -38,20 +48,26 @@ export function AuthProvider({ children }) {
             full_name: firebaseUser.displayName,
             profile_image_url: firebaseUser.photoURL,
           },
-          { headers: { Authorization: `Bearer ${token}` } }
+          { headers: { Authorization: `Bearer ${token}` } },
         );
 
         if (seq !== syncSeqRef.current) return;
         const dev = res.data?.developer;
         if (dev?.firebase_uid !== firebaseUser.uid) return;
-        setDbUser(dev);
+        setDbUser(
+          dev
+            ? {
+                ...dev,
+                profile_image_url:
+                  dev.profile_image_url || firebaseUser.photoURL || null,
+              }
+            : null,
+        );
       } catch (err) {
         const status = err.response?.status;
         const body = err.response?.data;
-        console.error('Failed to sync user:', status, body || err.message);
+        console.error("Failed to sync user:", status, body || err.message);
         if (seq === syncSeqRef.current) setDbUser(null);
-      } finally {
-        if (seq === syncSeqRef.current) setLoading(false);
       }
     });
     return () => unsubscribe();
@@ -70,7 +86,15 @@ export function AuthProvider({ children }) {
       const res = await axios.get(`${API}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setDbUser(res.data?.developer ?? null);
+      const dev = res.data?.developer ?? null;
+      setDbUser(
+        dev
+          ? {
+              ...dev,
+              profile_image_url: dev.profile_image_url || user.photoURL || null,
+            }
+          : null,
+      );
     } catch (err) {
       console.error("refreshDbUser failed:", err.response?.data || err.message);
     }
@@ -84,7 +108,17 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, dbUser, isAuthenticated, loading, getToken, refreshDbUser, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        dbUser,
+        isAuthenticated,
+        loading,
+        getToken,
+        refreshDbUser,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

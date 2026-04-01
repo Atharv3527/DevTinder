@@ -3,6 +3,8 @@ import admin from "../config/firebaseAdmin.js";
 import { userAuth } from "../middlewares/auth.js";
 import { supabase } from "../config/supabase.js";
 import multer from "multer";
+import { deleteCache, deleteByPrefix } from "../config/redis.js";
+import { cacheKeys } from "../utils/cacheKeys.js";
 
 export const profileRouter = express.Router();
 
@@ -20,37 +22,49 @@ const upload = multer({
 });
 
 // POST /api/profile/upload-image — proxy upload through backend (bypasses Supabase RLS)
-profileRouter.post("/upload-image", userAuth, upload.single("file"), async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ error: "No file provided." });
+profileRouter.post(
+  "/upload-image",
+  userAuth,
+  upload.single("file"),
+  async (req, res) => {
+    try {
+      if (!req.file)
+        return res.status(400).json({ error: "No file provided." });
 
-    const bucket = req.body.bucket || "profile-images";
-    const allowedBuckets = ["profile-images", "background-images"];
-    if (!allowedBuckets.includes(bucket)) {
-      return res.status(400).json({ error: "Invalid bucket." });
+      const bucket = req.body.bucket || "profile-images";
+      const allowedBuckets = ["profile-images", "background-images"];
+      if (!allowedBuckets.includes(bucket)) {
+        return res.status(400).json({ error: "Invalid bucket." });
+      }
+
+      const ext = req.file.originalname.split(".").pop() || "jpg";
+      const path = `${req.user.uid}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .upload(path, req.file.buffer, {
+          contentType: req.file.mimetype,
+          upsert: true,
+          metadata: { owner: req.user.uid },
+        });
+
+      if (error) throw error;
+
+      const { data: urlData } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(data.path);
+
+      // Clear cache so profile updates are reflected immediately
+      await deleteCache(cacheKeys.authMe(req.user.uid));
+      await deleteByPrefix("feed:");
+
+      res.json({ success: true, url: urlData.publicUrl });
+    } catch (err) {
+      console.error("Image upload error:", err);
+      res.status(500).json({ error: err.message });
     }
-
-    const ext = req.file.originalname.split(".").pop() || "jpg";
-    const path = `${req.user.uid}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .upload(path, req.file.buffer, {
-        contentType: req.file.mimetype,
-        upsert: true,
-        metadata: { owner: req.user.uid },
-      });
-
-    if (error) throw error;
-
-    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(data.path);
-
-    res.json({ success: true, url: urlData.publicUrl });
-  } catch (err) {
-    console.error("Image upload error:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
+  },
+);
 
 // GET /api/profile — own profile
 profileRouter.get("/", userAuth, async (req, res) => {
@@ -110,7 +124,8 @@ profileRouter.post("/", userAuth, async (req, res) => {
     const email = existing?.email || tokenEmail;
     if (!email) {
       return res.status(400).json({
-        error: "No email on Firebase user; cannot create or update profile row.",
+        error:
+          "No email on Firebase user; cannot create or update profile row.",
       });
     }
 
@@ -124,8 +139,10 @@ profileRouter.post("/", userAuth, async (req, res) => {
     if (bio !== undefined) updatePayload.bio = bio;
     if (github_url !== undefined) updatePayload.github_url = github_url;
     if (address !== undefined) updatePayload.address = address;
-    if (profile_image_url !== undefined) updatePayload.profile_image_url = profile_image_url;
-    if (background_image_url !== undefined) updatePayload.background_image_url = background_image_url;
+    if (profile_image_url !== undefined)
+      updatePayload.profile_image_url = profile_image_url;
+    if (background_image_url !== undefined)
+      updatePayload.background_image_url = background_image_url;
     if (skills !== undefined) updatePayload.skills = skills;
     if (experience !== undefined) updatePayload.experience = experience;
     if (education !== undefined) updatePayload.education = education;
@@ -137,6 +154,10 @@ profileRouter.post("/", userAuth, async (req, res) => {
       .single();
 
     if (error) throw error;
+
+    await deleteCache(cacheKeys.authMe(uid));
+    // Profile edits affect how this user appears in feed cards across users.
+    await deleteByPrefix("feed:");
 
     res.json({ success: true, developer: data });
   } catch (err) {
@@ -152,12 +173,15 @@ profileRouter.get("/:uid", userAuth, async (req, res) => {
 
     const { data, error } = await supabase
       .from("developers")
-      .select("firebase_uid, full_name, email, profile_image_url, background_image_url, bio, skills, experience, education, github_url, address, created_at")
+      .select(
+        "firebase_uid, full_name, email, profile_image_url, background_image_url, bio, skills, experience, education, github_url, address, created_at",
+      )
       .eq("firebase_uid", uid)
       .single();
 
     if (error) {
-      if (error.code === "PGRST116") return res.status(404).json({ error: "Developer not found" });
+      if (error.code === "PGRST116")
+        return res.status(404).json({ error: "Developer not found" });
       throw error;
     }
 

@@ -242,7 +242,7 @@ export default function ProfileSetup() {
   const [toast, setToast] = useState('');
   const [toastType, setToastType] = useState('info');
 
-  const [profileImage, setProfileImage] = useState(dbUser?.profile_image_url || '');
+  const [profileImage, setProfileImage] = useState(dbUser?.profile_image_url || user?.photoURL || '');
   const [bgImage, setBgImage] = useState(dbUser?.background_image_url || '');
   const [bio, setBio] = useState(dbUser?.bio || '');
   const [address, setAddress] = useState(dbUser?.address || '');
@@ -257,7 +257,7 @@ export default function ProfileSetup() {
   // When auth sync finishes after mount, hydrate form without wiping user edits
   useEffect(() => {
     if (!dbUser) return;
-    setProfileImage((prev) => prev || dbUser.profile_image_url || '');
+    setProfileImage((prev) => prev || dbUser.profile_image_url || user?.photoURL || '');
     setBgImage((prev) => prev || dbUser.background_image_url || '');
     setBio((prev) => prev || dbUser.bio || '');
     setAddress((prev) => prev || dbUser.address || '');
@@ -272,7 +272,7 @@ export default function ProfileSetup() {
     if (Array.isArray(dbUser.education) && dbUser.education.length) {
       setEducation((prev) => (prev.some((e) => e.degree || e.college_name) ? prev : dbUser.education));
     }
-  }, [dbUser, user?.displayName]);
+  }, [dbUser, user?.displayName, user?.photoURL]);
 
   const showToast = (msg, type = 'info') => {
     setToast(msg);
