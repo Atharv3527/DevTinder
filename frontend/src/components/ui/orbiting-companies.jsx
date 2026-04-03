@@ -16,20 +16,15 @@ const logoComponents = {
   },
   meta: {
     component: () => (
-      // Real Meta infinity/loop logo mark
-      <svg viewBox="0 0 248 204" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+      // Real Meta infinity/loop logo mark (Continuous perfectly closed path)
+      <svg viewBox="0 0 320 176" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <linearGradient id="metaGrad1" x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id="metaGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#0064E1"/>
             <stop offset="100%" stopColor="#0082FB"/>
           </linearGradient>
-          <linearGradient id="metaGrad2" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#0082FB"/>
-            <stop offset="100%" stopColor="#00B2FF"/>
-          </linearGradient>
         </defs>
-        <path d="M22.5 102C22.5 79.1 36.4 60 53.3 60c8.7 0 17.3 5.5 25.6 17.2C88.2 88.6 97.3 106 107.7 124c14.1 24.3 27.1 43 39.5 55.2C158.5 190.3 169 196 180.5 196c37.8 0 45-48.3 45-94 0-14.3-1.5-30-9-42.3" fill="none" stroke="url(#metaGrad1)" strokeWidth="36" strokeLinecap="round"/>
-        <path d="M216.5 59.7C208.8 47.7 198 40 186 40c-15 0-27.7 9.8-39.7 29.5-5.5 9-11.2 19.7-17.3 31.3-11.4 21.6-22.7 41-35 55.7C82.3 172.5 70.3 180 56.5 180c-9.7 0-18-4.3-24.7-11.5" fill="none" stroke="url(#metaGrad2)" strokeWidth="36" strokeLinecap="round"/>
+        <path d="M 66 160 C 26 160 14 116 14 88 C 14 60 26 16 66 16 C 94 16 116 35 131 58 L 189 118 C 204 141 226 160 254 160 C 294 160 306 116 306 88 C 306 60 294 16 254 16 C 226 16 204 35 189 58 L 131 118 C 116 141 94 160 66 160 Z" stroke="url(#metaGrad1)" strokeWidth="28" strokeLinejoin="round"/>
       </svg>
     ),
     color: '#0082FB',
