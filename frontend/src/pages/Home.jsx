@@ -6,6 +6,7 @@ import {
   Users, Briefcase, MessageSquare,
   Github, Star, ArrowRight, Globe, ShieldCheck
 } from 'lucide-react';
+import OrbitingCompanies from '../components/ui/orbiting-companies';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -108,72 +109,108 @@ export default function Home() {
     <div className="w-full">
 
       {/* ── Hero ── */}
-      <div className="relative w-full flex flex-col items-center justify-center min-h-[calc(100vh-8rem)] text-center overflow-x-hidden px-4 sm:px-6 lg:px-8">
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="relative z-10 flex flex-col items-center w-full"
-        >
+      <div className="relative w-full min-h-[calc(100vh-8rem)] flex items-center overflow-x-hidden px-6 sm:px-10 lg:px-16">
+        {/* Two-column grid */}
+        <div className="relative z-10 w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-8 items-center">
 
-          {/* Title */}
-          <motion.div variants={itemVariants} className="w-full max-w-4xl mx-auto">
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-text-primary leading-tight py-2">
-              {words.map((word, idx) => (
-                <motion.span
-                  key={idx}
-                  variants={{
-                    hidden: { opacity: 0, y: 24, filter: 'blur(10px)' },
-                    visible: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { delay: idx * 0.08 } },
-                  }}
-                  className="inline-block mr-[0.3em] last:mr-0"
-                >
-                  {word === 'Connect' ? (
-                    <span className="bg-gradient-to-r from-accent via-primary to-accent bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient">
-                      {word}
-                    </span>
-                  ) : word}
-                </motion.span>
-              ))}
-            </h1>
-          </motion.div>
-
-          {/* Subtitle */}
-          <motion.p
-            variants={itemVariants}
-            className="text-lg sm:text-xl text-text-secondary max-w-2xl mx-auto pt-5 leading-relaxed"
-          >
-            DevTinder is a professional platform built for developers — discover talent, find opportunities, and build your network with people who think in code.
-          </motion.p>
-
-          {/* CTA */}
-          <motion.div variants={itemVariants} className="mt-10">
-            <Link to="/signup">
-              <motion.span
-                whileHover={{ scale: 1.04, y: -2 }}
-                whileTap={{ scale: 0.97 }}
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-primary to-accent text-white px-8 py-3.5 rounded-2xl font-bold text-base transition-all shadow-lg shadow-primary/25 hover:shadow-primary/40 relative overflow-hidden group cursor-pointer"
-              >
-                <span className="relative z-10 flex items-center gap-2">
-                  Start Building Your Profile
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </span>
-                <div className="absolute inset-0 bg-white/15 translate-y-full group-hover:translate-y-0 transition-transform duration-300 z-0" />
-              </motion.span>
-            </Link>
-          </motion.div>
-
-          {/* Scroll hint */}
+          {/* ── Left: Text Content ── */}
           <motion.div
-            variants={itemVariants}
-            animate={{ y: [0, 6, 0] }}
-            transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
-            className="mt-16 flex flex-col items-center gap-2 text-text-secondary/50"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="flex flex-col items-start text-left"
           >
-            <span className="text-xs font-medium tracking-widest uppercase">Scroll to explore</span>
-            <div className="w-px h-10 bg-gradient-to-b from-border to-transparent" />
+            {/* Badge */}
+            <motion.div variants={itemVariants}>
+              <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold tracking-wide bg-primary/10 text-primary border border-primary/20 mb-6">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                Platform for Professional Developers
+              </span>
+            </motion.div>
+
+            {/* Title */}
+            <motion.div variants={itemVariants} className="w-full">
+              <h1 className="text-5xl md:text-6xl lg:text-6xl xl:text-7xl font-extrabold tracking-tight text-text-primary leading-tight py-1">
+                {words.map((word, idx) => (
+                  <motion.span
+                    key={idx}
+                    variants={{
+                      hidden: { opacity: 0, y: 24, filter: 'blur(10px)' },
+                      visible: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { delay: idx * 0.08 } },
+                    }}
+                    className="inline-block mr-[0.3em] last:mr-0"
+                  >
+                    {word === 'Connect' ? (
+                      <span className="bg-gradient-to-r from-accent via-primary to-accent bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient">
+                        {word}
+                      </span>
+                    ) : word}
+                  </motion.span>
+                ))}
+              </h1>
+            </motion.div>
+
+            {/* Subtitle */}
+            <motion.p
+              variants={itemVariants}
+              className="text-lg sm:text-xl text-text-secondary max-w-lg pt-6 leading-relaxed"
+            >
+              DevTinder is a professional platform built for developers — discover talent, find opportunities, and build your network with people who think in code.
+            </motion.p>
+
+            {/* CTA */}
+            <motion.div variants={itemVariants} className="mt-10 flex items-center gap-4 flex-wrap">
+              <Link to="/signup">
+                <motion.span
+                  whileHover={{ scale: 1.04, y: -2 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-primary to-accent text-white px-8 py-3.5 rounded-2xl font-bold text-base transition-all shadow-lg shadow-primary/25 hover:shadow-primary/40 relative overflow-hidden group cursor-pointer"
+                >
+                  <span className="relative z-10 flex items-center gap-2">
+                    Start Building Your Profile
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </span>
+                  <div className="absolute inset-0 bg-white/15 translate-y-full group-hover:translate-y-0 transition-transform duration-300 z-0" />
+                </motion.span>
+              </Link>
+              <Link to="/feed">
+                <motion.span
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="inline-flex items-center gap-2 border border-border text-text-secondary hover:text-text-primary hover:border-primary/40 px-6 py-3.5 rounded-2xl font-semibold text-base transition-all cursor-pointer"
+                >
+                  Explore Feed
+                </motion.span>
+              </Link>
+            </motion.div>
+
+            {/* Scroll hint */}
+            <motion.div
+              variants={itemVariants}
+              animate={{ y: [0, 6, 0] }}
+              transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+              className="mt-14 flex items-center gap-3 text-text-secondary/40"
+            >
+              <div className="w-px h-8 bg-gradient-to-b from-border to-transparent" />
+              <span className="text-xs font-medium tracking-widest uppercase">Scroll to explore</span>
+            </motion.div>
           </motion.div>
-        </motion.div>
+
+          {/* ── Right: Orbiting Companies ── */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.85 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.9, delay: 0.3, type: 'spring', stiffness: 120, damping: 18 }}
+            className="flex flex-col items-center justify-center gap-4 mt-8 lg:mt-0"
+          >
+
+
+            <OrbitingCompanies />
+
+            {/* Bottom label */}
+            <p className="text-xs text-text-secondary/50 tracking-wide mt-2">13+ global companies · hover to explore</p>
+          </motion.div>
+        </div>
       </div>
 
 
