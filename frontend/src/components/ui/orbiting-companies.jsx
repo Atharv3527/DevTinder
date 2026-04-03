@@ -16,10 +16,20 @@ const logoComponents = {
   },
   meta: {
     component: () => (
-      <svg viewBox="0 0 24 24" className="w-full h-full" fill="none">
-        <path d="M2.048 12C2.048 6.48 6.48 2.048 12 2.048S21.952 6.48 21.952 12 17.52 21.952 12 21.952 2.048 17.52 2.048 12z" fill="#0082FB"/>
-        <path d="M7.5 14.25c0 .828.672 1.5 1.5 1.5s1.5-.672 1.5-1.5V9.75c0-.414-.336-.75-.75-.75h-1.5c-.414 0-.75.336-.75.75v4.5zM13.5 14.25c0 .828.672 1.5 1.5 1.5s1.5-.672 1.5-1.5V9.75c0-.414-.336-.75-.75-.75h-1.5c-.414 0-.75.336-.75.75v4.5z" fill="white"/>
-        <path d="M9 12h6" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+      // Real Meta infinity/loop logo mark
+      <svg viewBox="0 0 248 204" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="metaGrad1" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#0064E1"/>
+            <stop offset="100%" stopColor="#0082FB"/>
+          </linearGradient>
+          <linearGradient id="metaGrad2" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#0082FB"/>
+            <stop offset="100%" stopColor="#00B2FF"/>
+          </linearGradient>
+        </defs>
+        <path d="M22.5 102C22.5 79.1 36.4 60 53.3 60c8.7 0 17.3 5.5 25.6 17.2C88.2 88.6 97.3 106 107.7 124c14.1 24.3 27.1 43 39.5 55.2C158.5 190.3 169 196 180.5 196c37.8 0 45-48.3 45-94 0-14.3-1.5-30-9-42.3" fill="none" stroke="url(#metaGrad1)" strokeWidth="36" strokeLinecap="round"/>
+        <path d="M216.5 59.7C208.8 47.7 198 40 186 40c-15 0-27.7 9.8-39.7 29.5-5.5 9-11.2 19.7-17.3 31.3-11.4 21.6-22.7 41-35 55.7C82.3 172.5 70.3 180 56.5 180c-9.7 0-18-4.3-24.7-11.5" fill="none" stroke="url(#metaGrad2)" strokeWidth="36" strokeLinecap="round"/>
       </svg>
     ),
     color: '#0082FB',
@@ -66,13 +76,50 @@ const logoComponents = {
   },
   ibm: {
     component: () => (
-      <svg viewBox="0 0 24 24" className="w-full h-full">
-        <path d="M0 6.084h3.857v1.08H0zm0 1.862h3.857v1.08H0zm4.62 0h1.08v2.942H4.62zm1.843-1.862h3.857v1.08H6.463zm1.08 1.862h1.08v2.942H7.543zm0 0" fill="#1F70C1"/>
-        <path d="M6.463 9.869h3.857v1.08H6.463zM0 9.869h3.857v1.08H0zM0 16.237h3.857v1.08H0zm0-1.862h3.857v1.08H0zm4.62 0h1.08v2.942H4.62zm1.843 1.862h3.857v1.08H6.463zm0-1.862h3.857v1.08H6.463zm1.08 0h1.08v2.942H7.543zM6.463 18.1h3.857v1.08H6.463zM0 18.1h3.857v1.08H0zM12.927 6.084h3.857v1.08h-3.857zm0 3.785h3.857v1.08h-3.857zm0 4.506h3.857v1.08h-3.857zm0 3.785h3.857v1.08h-3.857zm4.62-9.313h1.08v4.004h-1.08zm0 5.69h1.08v4.004h-1.08zm1.843-7.668h3.857v1.08h-3.857zm0 1.862h1.08v2.942h-1.08zm0 5.546h1.08v2.942h-1.08zm0-16.084h3.857v1.08h-3.857zm2.777 1.862h1.08v1.08h-1.08zm0 14.397h3.857v1.08h-3.857z" fill="#1F70C1"/>
+      // Accurate IBM 8-bar striped wordmark, scaled to fill the circle
+      <svg viewBox="0 0 80 32" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+        <g fill="#1F70C1">
+          {/* I */}
+          <rect x="0" y="0" width="14" height="2.5"/>
+          <rect x="0" y="4" width="14" height="2.5"/>
+          <rect x="4" y="8" width="6" height="2.5"/>
+          <rect x="4" y="12" width="6" height="2.5"/>
+          <rect x="4" y="16" width="6" height="2.5"/>
+          <rect x="4" y="20" width="6" height="2.5"/>
+          <rect x="0" y="24" width="14" height="2.5"/>
+          <rect x="0" y="28" width="14" height="2.5"/>
+          {/* B */}
+          <rect x="18" y="0" width="18" height="2.5"/>
+          <rect x="18" y="4" width="22" height="2.5"/>
+          <rect x="18" y="8" width="6" height="2.5"/>
+          <rect x="18" y="12" width="18" height="2.5"/>
+          <rect x="18" y="16" width="18" height="2.5"/>
+          <rect x="18" y="20" width="6" height="2.5"/>
+          <rect x="18" y="24" width="22" height="2.5"/>
+          <rect x="18" y="28" width="18" height="2.5"/>
+          {/* M */}
+          <rect x="44" y="0" width="36" height="2.5"/>
+          <rect x="44" y="4" width="5" height="2.5"/>
+          <rect x="57" y="4" width="6" height="2.5"/>
+          <rect x="75" y="4" width="5" height="2.5"/>
+          <rect x="44" y="8" width="5" height="2.5"/>
+          <rect x="59" y="8" width="2" height="2.5"/>
+          <rect x="75" y="8" width="5" height="2.5"/>
+          <rect x="44" y="12" width="5" height="2.5"/>
+          <rect x="75" y="12" width="5" height="2.5"/>
+          <rect x="44" y="16" width="5" height="2.5"/>
+          <rect x="75" y="16" width="5" height="2.5"/>
+          <rect x="44" y="20" width="5" height="2.5"/>
+          <rect x="75" y="20" width="5" height="2.5"/>
+          <rect x="44" y="24" width="5" height="2.5"/>
+          <rect x="75" y="24" width="5" height="2.5"/>
+          <rect x="44" y="28" width="36" height="2.5"/>
+        </g>
       </svg>
     ),
     color: '#1F70C1',
     label: 'IBM',
+    padding: '4px',
   },
   oracle: {
     component: () => (
@@ -101,56 +148,85 @@ const logoComponents = {
     color: '#049FD9',
     label: 'Cisco',
   },
-  wipro: {
+  atlassian: {
     component: () => (
-      <svg viewBox="0 0 24 24" className="w-full h-full">
-        <circle cx="12" cy="12" r="10" fill="#341C6E"/>
-        <path d="M7 9l2 6 3-4 3 4 2-6" stroke="#FFD700" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+      // Accurate Atlassian 'A' gradient mark
+      <svg viewBox="0 0 257 257" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="atlGrad" x1="98.031%" y1=".363%" x2="58.888%" y2="40.615%" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#0052CC" offset="18%"/>
+            <stop stopColor="#2684FF" offset="100%"/>
+          </linearGradient>
+        </defs>
+        <path d="M114.982 122.396C111.856 118.861 106.79 119.073 103.851 122.916L55.232 186.981C52.644 190.347 54.978 195.2 59.23 195.2H121.69c2.08.107 4.053-.96 5.12-2.773 16.853-29.44 8.533-58.027-11.828-70.031z" fill="url(#atlGrad)"/>
+        <path d="M122.262 12.267c-31.253 51.84-29.173 115.2 5.44 165.013a5.76 5.76 0 005.014 2.773h62.35c4.148 0 6.614-4.8 4.26-8.32 0 0-58.88-94.933-61.76-99.307-2.668-4.16-9.067-4.266-15.304-60.16z" fill="#2684FF"/>
       </svg>
     ),
-    color: '#341C6E',
-    label: 'Wipro',
+    color: '#2684FF',
+    label: 'Atlassian',
   },
   hcl: {
     component: () => (
-      <svg viewBox="0 0 24 24" className="w-full h-full">
-        <rect width="24" height="24" rx="4" fill="#EE3124"/>
-        <text x="2" y="17" fontSize="9" fontWeight="bold" fill="white" fontFamily="Arial">HCL</text>
+      // HCLTech gradient background with bold white text (matching real logo)
+      <svg viewBox="0 0 120 48" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="hclGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#6B21A8"/>
+            <stop offset="50%" stopColor="#7C3AED"/>
+            <stop offset="100%" stopColor="#2563EB"/>
+          </linearGradient>
+        </defs>
+        <rect width="120" height="48" rx="6" fill="url(#hclGrad)"/>
+        <text x="60" y="34" textAnchor="middle" fontSize="22" fontWeight="800" fill="white" fontFamily="Arial, sans-serif" letterSpacing="1">HCLTech</text>
       </svg>
     ),
-    color: '#EE3124',
+    color: '#7C3AED',
     label: 'HCL Tech',
   },
-  capgemini: {
+  facebook: {
     component: () => (
-      <svg viewBox="0 0 24 24" className="w-full h-full">
-        <rect width="24" height="24" rx="4" fill="#0070CE"/>
-        <circle cx="12" cy="12" r="6" fill="none" stroke="white" strokeWidth="2"/>
-        <path d="M9 12 a3 3 0 1 1 6 0" stroke="white" strokeWidth="2" fill="none"/>
+      // Facebook classic 'f' on blue circle
+      <svg viewBox="0 0 24 24" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="12" fill="#1877F2"/>
+        <path d="M16.5 8h-2c-.55 0-1 .45-1 1v1.5h3l-.5 3h-2.5V20h-3v-6.5H8.5v-3H11V9c0-2.21 1.79-4 4-4h1.5V8z" fill="white"/>
       </svg>
     ),
-    color: '#0070CE',
-    label: 'Capgemini',
+    color: '#1877F2',
+    label: 'Facebook',
+  },
+  amazon: {
+    component: () => (
+      // Amazon icon: white 'a' + orange smile arrow on dark circle (dark-theme friendly)
+      <svg viewBox="0 0 100 100" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+        {/* Dark circle background */}
+        <circle cx="50" cy="50" r="48" fill="#1a1a1a" stroke="#333" strokeWidth="2"/>
+        {/* White lowercase 'a' */}
+        <text x="50" y="63" textAnchor="middle" fontSize="58" fontWeight="900" fill="white" fontFamily="'Georgia', 'Times New Roman', serif">a</text>
+        {/* Orange smile arc */}
+        <path d="M26 74 Q50 90 74 74" fill="none" stroke="#FF9900" strokeWidth="5" strokeLinecap="round"/>
+        {/* Orange arrowhead */}
+        <path d="M70 69 L76 74 L70 77" fill="none" stroke="#FF9900" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+    color: '#FF9900',
+    label: 'Amazon',
   },
 };
 
+
 // --- Skills Configuration ---
 const companiesConfig = [
-  // Inner Orbit (FAANG core)
-  { id: 'google',    orbitRadius: 110, size: 44, speed: 0.4,  iconType: 'google',    phaseShift: 0,                         glowColor: 'cyan',   label: 'Google' },
-  { id: 'meta',      orbitRadius: 110, size: 42, speed: 0.4,  iconType: 'meta',      phaseShift: (2 * Math.PI) / 5,         glowColor: 'cyan',   label: 'Meta' },
-  { id: 'amazon',    orbitRadius: 110, size: 42, speed: 0.4,  iconType: 'amazon',    phaseShift: (4 * Math.PI) / 5,         glowColor: 'cyan',   label: 'Amazon' },
-  { id: 'apple',     orbitRadius: 110, size: 40, speed: 0.4,  iconType: 'apple',     phaseShift: (6 * Math.PI) / 5,         glowColor: 'cyan',   label: 'Apple' },
-  { id: 'netflix',   orbitRadius: 110, size: 42, speed: 0.4,  iconType: 'netflix',   phaseShift: (8 * Math.PI) / 5,         glowColor: 'cyan',   label: 'Netflix' },
-  // Outer Orbit (MNC tier)
-  { id: 'microsoft', orbitRadius: 195, size: 46, speed: -0.25, iconType: 'microsoft', phaseShift: 0,                         glowColor: 'purple', label: 'Microsoft' },
-  { id: 'ibm',       orbitRadius: 195, size: 42, speed: -0.25, iconType: 'ibm',       phaseShift: (2 * Math.PI) / 8,         glowColor: 'purple', label: 'IBM' },
-  { id: 'oracle',    orbitRadius: 195, size: 42, speed: -0.25, iconType: 'oracle',    phaseShift: (4 * Math.PI) / 8,         glowColor: 'purple', label: 'Oracle' },
-  { id: 'accenture', orbitRadius: 195, size: 42, speed: -0.25, iconType: 'accenture', phaseShift: (6 * Math.PI) / 8,         glowColor: 'purple', label: 'Accenture' },
-  { id: 'cisco',     orbitRadius: 195, size: 40, speed: -0.25, iconType: 'cisco',     phaseShift: (8 * Math.PI) / 8,         glowColor: 'purple', label: 'Cisco' },
-  { id: 'wipro',     orbitRadius: 195, size: 40, speed: -0.25, iconType: 'wipro',     phaseShift: (10 * Math.PI) / 8,        glowColor: 'purple', label: 'Wipro' },
-  { id: 'hcl',       orbitRadius: 195, size: 40, speed: -0.25, iconType: 'hcl',       phaseShift: (12 * Math.PI) / 8,        glowColor: 'purple', label: 'HCL Tech' },
-  { id: 'capgemini', orbitRadius: 195, size: 40, speed: -0.25, iconType: 'capgemini', phaseShift: (14 * Math.PI) / 8,        glowColor: 'purple', label: 'Capgemini' },
+  // Inner Orbit — 4 companies evenly spaced
+  { id: 'google',   orbitRadius: 110, size: 44, speed: 0.4,   iconType: 'google',   phaseShift: 0,                       glowColor: 'cyan',   label: 'Google' },
+  { id: 'meta',     orbitRadius: 110, size: 44, speed: 0.4,   iconType: 'meta',     phaseShift: (2 * Math.PI) / 4,      glowColor: 'cyan',   label: 'Meta' },
+  { id: 'apple',    orbitRadius: 110, size: 42, speed: 0.4,   iconType: 'apple',    phaseShift: (4 * Math.PI) / 4,      glowColor: 'cyan',   label: 'Apple' },
+  { id: 'netflix',  orbitRadius: 110, size: 44, speed: 0.4,   iconType: 'netflix',  phaseShift: (6 * Math.PI) / 4,      glowColor: 'cyan',   label: 'Netflix' },
+  // Outer Orbit — 5 companies evenly spaced at 72°
+  { id: 'microsoft', orbitRadius: 195, size: 46, speed: -0.25, iconType: 'microsoft', phaseShift: 0,                       glowColor: 'purple', label: 'Microsoft' },
+  { id: 'oracle',    orbitRadius: 195, size: 44, speed: -0.25, iconType: 'oracle',    phaseShift: (2 * Math.PI) / 5,      glowColor: 'purple', label: 'Oracle' },
+  { id: 'atlassian', orbitRadius: 195, size: 46, speed: -0.25, iconType: 'atlassian', phaseShift: (4 * Math.PI) / 5,      glowColor: 'purple', label: 'Atlassian' },
+  { id: 'facebook',  orbitRadius: 195, size: 46, speed: -0.25, iconType: 'facebook',  phaseShift: (6 * Math.PI) / 5,      glowColor: 'purple', label: 'Facebook' },
+  { id: 'amazon',    orbitRadius: 195, size: 46, speed: -0.25, iconType: 'amazon',    phaseShift: (8 * Math.PI) / 5,      glowColor: 'purple', label: 'Amazon' },
 ];
 
 // --- Memoized Icon Component ---
