@@ -34,7 +34,7 @@ export default function Navbar() {
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border bg-surface/80 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10">
         <div className="flex justify-between items-center h-16">
           <Link to="/" className="flex items-center gap-2 group">
             <div className="bg-gradient-to-tr from-accent to-primary p-2 rounded-xl group-hover:scale-105 transition-transform shadow-lg shadow-primary/20">
